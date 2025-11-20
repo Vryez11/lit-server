@@ -111,52 +111,18 @@
 - MySQL 8.0 이상
 - npm 또는 yarn
 
-### 1️⃣ 저장소 클론
+### 저장소 클론
 ```bash
 git clone https://github.com/Vryez11/suittrip-server.git
 cd suittrip-server
 ```
 
-### 2️⃣ 의존성 설치
+### 의존성 설치
 ```bash
 npm install
 ```
 
-### 3️⃣ 환경변수 설정
-`.env.example`을 복사하여 `.env` 파일 생성:
-```bash
-cp .env.example .env
-```
-
-`.env` 파일 수정:
-```env
-# 서버
-PORT=3000
-NODE_ENV=development
-
-# 데이터베이스
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=your_password
-DB_NAME=suittrip
-
-# JWT
-JWT_SECRET=your_jwt_secret_key
-REFRESH_TOKEN_SECRET=your_refresh_token_secret
-```
-
-### 4️⃣ 데이터베이스 설정
-MySQL에 데이터베이스 생성:
-```sql
-CREATE DATABASE suittrip CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
-
-스키마 적용:
-```bash
-npm run db:schema
-```
-
-### 5️⃣ 서버 실행
+### 서버 실행
 
 **개발 모드** (자동 재시작):
 ```bash
