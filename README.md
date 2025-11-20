@@ -1,4 +1,4 @@
-# 🧳 수뜨립(Suittrip) 백엔드 서버
+# 🧳 Lit(Life is Travel) 백엔드 서버
 
 > 여행객을 위한 짐 보관소 관리 플랫폼 RESTful API 서버
 
@@ -23,7 +23,7 @@
 
 ## 🎯 프로젝트 소개
 
-수뜨립(Suittrip)은 여행객들이 짐을 안전하게 보관할 수 있도록 돕는 **멀티 스토어 짐 보관소 관리 플랫폼**입니다.
+Lit(Lif is Travel)은 여행객들이 짐을 안전하게 보관할 수 있도록 돕는 **멀티 스토어 짐 보관소 관리 플랫폼**입니다.
 
 ### 핵심 특징
 - 🏪 **멀티 스토어 시스템** - 각 점포는 독립적으로 운영
@@ -114,7 +114,7 @@
 ### 저장소 클론
 ```bash
 git clone https://github.com/Vryez11/suittrip-server.git
-cd suittrip-server
+cd lit-server
 ```
 
 ### 의존성 설치
@@ -143,7 +143,7 @@ npm start
 ### Base URL
 ```
 Development: http://localhost:3000
-Production: https://api.suittrip.com
+Production: https://api.lit.com
 ```
 
 ### 인증 헤더
@@ -213,7 +213,7 @@ PUT    /api/storages/:id           - 보관함 수정
 ## 📁 프로젝트 구조
 
 ```
-suittrip-server/
+lit-server/
 ├── src/
 │   ├── config/              # 설정 파일
 │   │   └── database.js      # DB 연결
@@ -356,7 +356,7 @@ npm run db:reset
 
 ## 📞 연락처
 
-프로젝트 관련 문의: [GitHub Issues](https://github.com/Vryez11/suittrip-server/issues)
+프로젝트 관련 문의: [GitHub Issues](https://github.com/Vryez11/lit-server/issues)
 
 ---
 
