@@ -311,34 +311,42 @@ CREATE TABLE IF NOT EXISTS notifications (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='알림';
 
 -- ============================================================================
--- 9. toss_payments_accounts - 토스페이먼츠 계좌
+-- 9. payments - 결제 정보
 -- ============================================================================
-CREATE TABLE IF NOT EXISTS toss_payments_accounts (
-  id INT AUTO_INCREMENT PRIMARY KEY COMMENT '계좌 ID',
-  store_id VARCHAR(255) NOT NULL UNIQUE COMMENT '점포 ID',
+CREATE TABLE IF NOT EXISTS payments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '결제 ID',
 
-  -- 계좌 정보
-  bank_code VARCHAR(10) COMMENT '은행 코드',
-  bank_name VARCHAR(100) COMMENT '은행명',
-  account_number VARCHAR(50) COMMENT '계좌번호',
-  account_holder VARCHAR(100) COMMENT '예금주',
-  account_type ENUM('INDIVIDUAL', 'CORPORATE') DEFAULT 'CORPORATE' COMMENT '계좌 타입',
+  -- 어떤 가게 / 어떤 유저 매출인지
+  store_id VARCHAR(255) NOT NULL COMMENT '점포 ID',
+  user_id VARCHAR(255) NOT NULL COMMENT '사용자 ID',
 
-  -- 검증 정보
-  is_verified BOOLEAN DEFAULT FALSE COMMENT '검증 완료 여부',
-  verified_at TIMESTAMP COMMENT '검증 일시',
-  verification_id VARCHAR(255) COMMENT '검증 ID',
+  -- 금액 관련
+  amount_total INT UNSIGNED NOT NULL COMMENT '고객이 결제한 총 금액(원)',
+  currency VARCHAR(3) NOT NULL DEFAULT 'KRW' COMMENT '통화',
 
-  -- 판매자 등록
-  is_seller_registered BOOLEAN DEFAULT FALSE COMMENT '판매자 등록 여부',
-  seller_id VARCHAR(255) COMMENT '판매자 ID',
-  seller_status ENUM('APPROVAL_REQUIRED', 'PARTIALLY_APPROVED', 'KYC_REQUIRED', 'APPROVED') COMMENT '판매자 상태',
+  -- PG 관련 정보
+  pg_provider VARCHAR(50) NOT NULL COMMENT 'PG사 (toss)',
+  pg_payment_key VARCHAR(100) NOT NULL COMMENT '토스 paymentKey',
+  pg_order_id VARCHAR(100) NOT NULL COMMENT '주문 ID',
+  pg_method VARCHAR(30) NOT NULL COMMENT '결제 방법 (CARD, KAKAOPAY 등)',
 
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
+  -- 상태
+  status ENUM('PENDING', 'SUCCESS', 'FAILED', 'CANCELED', 'REFUNDED')
+        NOT NULL DEFAULT 'PENDING' COMMENT '결제 상태',
 
-  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='토스페이먼츠 계좌';
+  -- 시간
+  paid_at DATETIME NULL COMMENT '실제 결제 완료 시각',
+  canceled_at DATETIME NULL COMMENT '취소 시각',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
+
+  -- 정산 관련
+  is_settled TINYINT(1) NOT NULL DEFAULT 0 COMMENT '정산에 포함되었는지 여부',
+
+  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+  UNIQUE INDEX idx_payments_pg_payment_key (pg_payment_key),
+  INDEX idx_payments_store_paid (store_id, paid_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='결제 정보';
 
 -- ============================================================================
 -- 10. settlements - 정산 내역
