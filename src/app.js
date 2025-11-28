@@ -85,6 +85,7 @@ import reviewRoutes from './routes/reviewRoutes.js';
 import checkinRoutes from './routes/checkin.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
+import settlementRoutes from './routes/settlementRoutes.js';
 
 // 인증 라우트
 app.use('/api/auth', authRoutes);
@@ -118,6 +119,9 @@ app.use('/api/payments', paymentRoutes);
 
 // 웹훅 라우트 (인증 불필요)
 app.use('/api/webhooks', webhookRoutes);
+
+// 정산 라우트
+app.use('/api/settlements', settlementRoutes);
 
 // ============================================================================
 // 404 에러 핸들러
