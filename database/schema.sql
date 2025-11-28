@@ -484,6 +484,23 @@ CREATE TABLE IF NOT EXISTS settlement_statements (
   INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='점포 정산 명세';
 
+CREATE TABLE IF NOT EXISTS settlement_items (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '정산 항목 ID',
+
+  statement_id BIGINT UNSIGNED NOT NULL COMMENT '정산 명세 ID',
+  payment_id BIGINT UNSIGNED NOT NULL COMMENT '결제 ID',
+
+  amount INT UNSIGNED NOT NULL COMMENT '이 결제의 정산 반영 금액(원)',
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (statement_id) REFERENCES settlement_statements(id) ON DELETE CASCADE,
+  FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE RESTRICT,
+
+  UNIQUE KEY uniq_statement_payment (statement_id, payment_id),
+  INDEX idx_statement (statement_id),
+  INDEX idx_payment (payment_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='정산 상세(결제별)';
 
 -- ============================================================================
 -- 초기 데이터 삽입 (선택사항)
