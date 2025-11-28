@@ -353,36 +353,7 @@ CREATE TABLE IF NOT EXISTS payments (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='결제 정보';
 
 -- ============================================================================
--- 10. settlements - 정산 내역
--- ============================================================================
-CREATE TABLE IF NOT EXISTS settlements (
-  id VARCHAR(255) PRIMARY KEY COMMENT '정산 ID',
-  store_id VARCHAR(255) NOT NULL COMMENT '점포 ID',
-  payout_id VARCHAR(255) COMMENT '지급 ID',
-
-  amount INT NOT NULL COMMENT '정산 금액',
-  fee INT NOT NULL COMMENT '수수료',
-  net_amount INT NOT NULL COMMENT '실 지급액',
-
-  status ENUM('pending', 'completed', 'failed') DEFAULT 'pending' COMMENT '정산 상태',
-  description TEXT COMMENT '설명',
-
-  requested_at TIMESTAMP NOT NULL COMMENT '요청 일시',
-  completed_at TIMESTAMP COMMENT '완료 일시',
-  failure_reason TEXT COMMENT '실패 사유',
-
-  bank_code VARCHAR(10) COMMENT '은행 코드',
-  bank_name VARCHAR(100) COMMENT '은행명',
-  account_number VARCHAR(50) COMMENT '계좌번호',
-  account_holder VARCHAR(100) COMMENT '예금주',
-
-  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
-  INDEX idx_store_status (store_id, status),
-  INDEX idx_requested_at (requested_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='정산 내역';
-
--- ============================================================================
--- 11. daily_statistics - 일별 통계
+-- 10. daily_statistics - 일별 통계
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS daily_statistics (
   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '통계 ID',
@@ -405,7 +376,7 @@ CREATE TABLE IF NOT EXISTS daily_statistics (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='일별 통계';
 
 -- ============================================================================
--- 12. refresh_tokens - 리프레시 토큰
+-- 11. refresh_tokens - 리프레시 토큰
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS refresh_tokens (
   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '토큰 ID',
@@ -421,7 +392,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='리프레시 토큰';
 
 -- ============================================================================
--- 13. email_verifications - 이메일 인증
+-- 12. email_verifications - 이메일 인증
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS email_verifications (
   id INT AUTO_INCREMENT PRIMARY KEY COMMENT '인증 ID',
