@@ -535,6 +535,39 @@ CREATE TABLE IF NOT EXISTS settlement_errors (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='정산 관련 에러 로그';
 
 -- ============================================================================
+-- 18. store_settlement_accounts - 점포 정산 계좌
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS store_settlement_accounts (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '계좌 ID',
+
+  store_id VARCHAR(255) NOT NULL COMMENT '점포 ID',
+
+  bank_name VARCHAR(50) NOT NULL COMMENT '은행명',
+  bank_code VARCHAR(10) NOT NULL COMMENT '은행 코드 (세틀뱅크 코드)',
+
+  -- 계좌번호는 애플리케이션 레벨에서 암호화하여 저장
+  account_number VARCHAR(255) NOT NULL COMMENT '계좌번호 (암호화됨)',
+
+  account_holder_name VARCHAR(100) NOT NULL COMMENT '예금주명',
+
+  verified TINYINT(1) NOT NULL DEFAULT 0 COMMENT '계좌 인증 여부 (0:미인증, 1:인증됨)',
+  verified_at DATETIME NULL COMMENT '계좌 인증 완료 시간',
+
+  -- 계좌 인증 결과
+  verification_result JSON NULL COMMENT '계좌 인증 응답 데이터 (세틀뱅크 API 원본)',
+  verification_error TEXT NULL COMMENT '인증 실패 시 에러 메시지',
+
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일시',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
+
+  FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
+
+  UNIQUE KEY unique_store_account (store_id),
+  INDEX idx_verified (verified)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='점포 정산 계좌';
+
+-- ============================================================================
 -- 테이블 변경 사항
 -- ============================================================================
 
