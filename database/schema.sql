@@ -456,6 +456,35 @@ CREATE TABLE IF NOT EXISTS payment_webhooks (
   INDEX idx_event_status (event_type, status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='결제 웹훅 이력';
 
+CREATE TABLE IF NOT EXISTS settlement_statements (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '정산 ID',
+
+  store_id VARCHAR(255) NOT NULL COMMENT '점포 ID',
+  
+  -- 정산 기간(선택: 일단 날짜만 두고 나중에 확장 가능)
+  period_start DATETIME NOT NULL COMMENT '정산 대상 시작 시각',
+  period_end   DATETIME NOT NULL COMMENT '정산 대상 종료 시각',
+
+  -- 매출 및 금액
+  total_sales INT UNSIGNED NOT NULL COMMENT '정산 대상 총 매출(원)',
+  commission_rate DECIMAL(5,4) NOT NULL DEFAULT 0.2000 COMMENT '플랫폼 수수료 비율',
+  commission_amount INT UNSIGNED NOT NULL COMMENT '플랫폼 수수료 합계(원)',
+  payout_amount INT UNSIGNED NOT NULL COMMENT '가맹점 지급 금액(원)',
+
+  -- 상태
+  status ENUM('pending', 'paid', 'failed') NOT NULL DEFAULT 'pending' COMMENT '정산 상태',
+  payout_at DATETIME NULL COMMENT '실제 송금 완료 시각(세틀뱅크 성공 시)',
+
+  meta JSON NULL COMMENT '추가 메타데이터(테스트용 플래그, 비고 등)',
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+  INDEX idx_store_period (store_id, period_start, period_end),
+  INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='점포 정산 명세';
+
+
 -- ============================================================================
 -- 초기 데이터 삽입 (선택사항)
 -- ============================================================================
