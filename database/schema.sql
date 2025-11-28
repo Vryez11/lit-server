@@ -435,22 +435,21 @@ CREATE TABLE IF NOT EXISTS settlement_statements (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '정산 ID',
 
   store_id VARCHAR(255) NOT NULL COMMENT '점포 ID',
-  
-  -- 정산 기간(선택: 일단 날짜만 두고 나중에 확장 가능)
+
+  -- 정산 대상 기간
   period_start DATETIME NOT NULL COMMENT '정산 대상 시작 시각',
   period_end   DATETIME NOT NULL COMMENT '정산 대상 종료 시각',
 
-  -- 매출 및 금액
+  -- 매출 및 수수료
   total_sales INT UNSIGNED NOT NULL COMMENT '정산 대상 총 매출(원)',
   commission_rate DECIMAL(5,4) NOT NULL DEFAULT 0.2000 COMMENT '플랫폼 수수료 비율',
   commission_amount INT UNSIGNED NOT NULL COMMENT '플랫폼 수수료 합계(원)',
   payout_amount INT UNSIGNED NOT NULL COMMENT '가맹점 지급 금액(원)',
 
-  -- 상태
   status ENUM('pending', 'paid', 'failed') NOT NULL DEFAULT 'pending' COMMENT '정산 상태',
   payout_at DATETIME NULL COMMENT '실제 송금 완료 시각(세틀뱅크 성공 시)',
 
-  meta JSON NULL COMMENT '추가 메타데이터(테스트용 플래그, 비고 등)',
+  meta JSON NULL COMMENT '추가 메타데이터(테스트 여부, 비고 등)',
 
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -480,6 +479,29 @@ CREATE TABLE IF NOT EXISTS settlement_items (
   INDEX idx_statement (statement_id),
   INDEX idx_payment (payment_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='정산 상세(결제별)';
+
+-- ============================================================================
+-- 16. settlement_logs - 정산 배치 실행 로그 테이블
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS settlement_logs (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '정산 배치 로그 ID',
+
+  started_at DATETIME NOT NULL COMMENT '정산 배치 시작 시각',
+  ended_at   DATETIME NULL COMMENT '정산 배치 종료 시각',
+
+  period_start DATETIME NOT NULL COMMENT '정산 대상 기간 시작',
+  period_end   DATETIME NOT NULL COMMENT '정산 대상 기간 종료',
+
+  status ENUM('success', 'partial', 'failed', 'noop') NOT NULL COMMENT '실행 결과 상태',
+  message TEXT NULL COMMENT '요약 메시지',
+  error_message TEXT NULL COMMENT '에러 메시지(실패 시)',
+
+  total_payments INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '정산 대상 결제 수',
+  total_statements INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '생성된 정산 명세 수',
+
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='정산 배치 실행 로그';
 
 -- ============================================================================
 -- 테이블 변경 사항
