@@ -504,6 +504,22 @@ CREATE TABLE IF NOT EXISTS settlement_logs (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='정산 배치 실행 로그';
 
 -- ============================================================================
+-- 17. settlement_errors - 정산 오류 테이블
+-- ============================================================================
+
+
+CREATE TABLE IF NOT EXISTS settlement_errors (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '에러 ID',
+  type VARCHAR(50) NOT NULL COMMENT '에러 타입 코드',
+  payment_id BIGINT UNSIGNED NULL COMMENT '관련 결제 ID',
+  store_id VARCHAR(255) NULL COMMENT '관련 점포 ID',
+  statement_id BIGINT UNSIGNED NULL COMMENT '관련 정산 명세 ID',
+  message TEXT NULL COMMENT '에러 메시지',
+  raw_data JSON NULL COMMENT '관련 데이터 스냅샷',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '에러 발생 시각'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='정산 관련 에러 로그';
+
+-- ============================================================================
 -- 테이블 변경 사항
 -- ============================================================================
 
