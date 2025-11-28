@@ -456,6 +456,10 @@ CREATE TABLE IF NOT EXISTS payment_webhooks (
   INDEX idx_event_status (event_type, status, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='결제 웹훅 이력';
 
+-- ============================================================================
+-- 14. settlement_statements - 정산 명세 테이블
+-- ============================================================================
+
 CREATE TABLE IF NOT EXISTS settlement_statements (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '정산 ID',
 
@@ -483,6 +487,10 @@ CREATE TABLE IF NOT EXISTS settlement_statements (
   INDEX idx_store_period (store_id, period_start, period_end),
   INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='점포 정산 명세';
+
+-- ============================================================================
+-- 15. settlement_items - 정산 상세 테이블
+-- ============================================================================
 
 CREATE TABLE IF NOT EXISTS settlement_items (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY COMMENT '정산 항목 ID',
