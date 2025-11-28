@@ -512,5 +512,11 @@ ALTER TABLE payments
   ADD INDEX idx_settle (is_settled, store_id, paid_at),
   ADD FOREIGN KEY (settlement_statement_id) REFERENCES settlement_statements(id) ON DELETE SET NULL;
 
+ALTER TABLE settlement_logs
+  ADD COLUMN success_payments INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '정산에 성공한 결제 수',
+  ADD COLUMN skipped_payments INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '스킵된 결제 수(이상/중복 등)',
+  ADD COLUMN total_payout INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '총 지급액 합계(원)',
+  ADD COLUMN total_commission INT UNSIGNED NOT NULL DEFAULT 0 COMMENT '총 수수료 합계(원)';
+
 -- 완료 메시지
 SELECT '✅ 데이터베이스 스키마 생성 완료!' AS message;
