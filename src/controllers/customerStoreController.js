@@ -11,29 +11,10 @@ import { query } from '../config/database.js';
  */
 export const listStores = async (req, res) => {
   try {
-    const { limit = 20, latitude, longitude, radius, keyword } = req.query;
-
-    const normalizedLimit = Math.min(parseInt(limit, 10) || 20, 50);
-    const hasLocation =
-      latitude !== undefined &&
-      longitude !== undefined &&
-      !Number.isNaN(parseFloat(latitude)) &&
-      !Number.isNaN(parseFloat(longitude));
+    const { limit = 20, keyword } = req.query;
+    const normalizedLimit = Math.min(parseInt(limit, 10) || 20, 100);
 
     const params = [];
-    let distanceSelect = '';
-    if (hasLocation) {
-      const lat = parseFloat(latitude);
-      const lon = parseFloat(longitude);
-      // Haversine formula (km)
-      distanceSelect = `,
-        (6371 * acos(
-          cos(radians(?)) * cos(radians(s.latitude)) * cos(radians(s.longitude) - radians(?)) +
-          sin(radians(?)) * sin(radians(s.latitude))
-        )) AS distance_km`;
-      params.push(lat, lon, lat);
-    }
-
     let sql = `
       SELECT
         s.id,
@@ -42,33 +23,18 @@ export const listStores = async (req, res) => {
         s.address,
         s.latitude,
         s.longitude
-        ${distanceSelect}
       FROM stores s
       WHERE 1=1
         AND (s.has_completed_setup = TRUE OR s.has_completed_setup IS NULL)
     `;
 
-    // 검색어 필터
     if (keyword) {
       sql += ' AND (s.business_name LIKE ? OR s.address LIKE ?)';
       const like = `%${keyword}%`;
       params.push(like, like);
     }
 
-    // 반경 필터 (위치가 있을 때만)
-    if (hasLocation && radius && !Number.isNaN(parseFloat(radius))) {
-      sql += ' HAVING distance_km <= ?';
-      params.push(parseFloat(radius));
-    }
-
-    // 정렬: 위치 있으면 거리, 없으면 이름
-    if (hasLocation) {
-      sql += ' ORDER BY distance_km ASC';
-    } else {
-      sql += ' ORDER BY s.business_name ASC';
-    }
-
-    sql += ' LIMIT ?';
+    sql += ' ORDER BY s.business_name ASC LIMIT ?';
     params.push(normalizedLimit);
 
     const rows = await query(sql, params);
@@ -83,7 +49,6 @@ export const listStores = async (req, res) => {
             address: row.address,
             latitude: row.latitude,
             longitude: row.longitude,
-            distanceKm: row.distance_km,
           })),
         },
         '스토어 목록 조회 성공'
