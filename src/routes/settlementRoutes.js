@@ -10,12 +10,12 @@ import {
   getSettlementLogs,
   getSettlementErrors,
 } from '../controllers/settlementController.js';
-import { authenticateToken } from '../middleware/auth.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // 모든 라우트에 인증 필요
-router.use(authenticateToken);
+router.use(authenticate);
 
 /**
  * 정산 수동 실행 (관리자용)
@@ -37,22 +37,10 @@ router.get('/', getSettlements);
  * 정산 상세 조회
  * GET /api/settlements/:id
  */
-router.get('/:id', getSettlementDetail);
-
-/**
- * 정산 로그 조회 (관리자용)
- * GET /api/settlements/logs?page=1&limit=20
- *
- * 주의: 실제 운영 환경에서는 관리자 권한 체크 미들웨어를 추가해야 합니다.
- */
 router.get('/logs', getSettlementLogs);
 
-/**
- * 정산 에러 조회 (관리자용)
- * GET /api/settlements/errors?page=1&limit=20
- *
- * 주의: 실제 운영 환경에서는 관리자 권한 체크 미들웨어를 추가해야 합니다.
- */
 router.get('/errors', getSettlementErrors);
+
+router.get('/:id', getSettlementDetail);
 
 export default router;
