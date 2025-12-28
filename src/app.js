@@ -86,6 +86,7 @@ import checkinRoutes from './routes/checkin.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import webhookRoutes from './routes/webhookRoutes.js';
 import settlementRoutes from './routes/settlementRoutes.js';
+import customerStoreRoutes from './routes/customerStoreRoutes.js';
 
 // 인증 라우트
 app.use('/api/auth', authRoutes);
@@ -122,6 +123,9 @@ app.use('/api/webhooks', webhookRoutes);
 
 // 정산 라우트
 app.use('/api/settlements', settlementRoutes);
+
+// 고객용 스토어 조회
+app.use('/api/customer/stores', customerStoreRoutes);
 
 // ============================================================================
 // 404 에러 핸들러
