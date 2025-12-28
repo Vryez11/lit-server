@@ -25,7 +25,6 @@ export const listStores = async (req, res) => {
         s.longitude
       FROM stores s
       WHERE 1=1
-        AND (s.has_completed_setup = TRUE OR s.has_completed_setup IS NULL)
     `;
 
     if (keyword) {
