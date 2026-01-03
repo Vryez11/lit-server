@@ -130,31 +130,47 @@ CREATE TABLE IF NOT EXISTS store_settings (
   auto_approval BOOLEAN DEFAULT FALSE COMMENT '자동 승인 여부',
   auto_overdue_notification BOOLEAN DEFAULT TRUE COMMENT '연체 자동 알림',
 
-  -- 소형 보관함 가격
-  small_hourly_rate INT DEFAULT 2000 COMMENT '소형 시간당 요금',
-  small_daily_rate INT DEFAULT 15000 COMMENT '소형 일 요금',
-  small_hour_unit INT DEFAULT 1 COMMENT '소형 시간 단위',
-  small_max_capacity INT DEFAULT 5 COMMENT '소형 최대 수용 개수',
-  small_enabled BOOLEAN DEFAULT TRUE COMMENT '소형 사용 가능 여부',
+  -- S 보관함
+  s_hourly_rate INT DEFAULT 2000 COMMENT 'S 시간당 요금',
+  s_daily_rate INT DEFAULT 15000 COMMENT 'S 일 요금',
+  s_hour_unit INT DEFAULT 1 COMMENT 'S 시간 단위',
+  s_max_capacity INT DEFAULT 5 COMMENT 'S 최대 수용 개수',
+  s_enabled BOOLEAN DEFAULT TRUE COMMENT 'S 사용 가능 여부',
 
-  -- 중형 보관함 가격
-  medium_hourly_rate INT DEFAULT 3000 COMMENT '중형 시간당 요금',
-  medium_daily_rate INT DEFAULT 24000 COMMENT '중형 일 요금',
-  medium_hour_unit INT DEFAULT 1 COMMENT '중형 시간 단위',
-  medium_max_capacity INT DEFAULT 8 COMMENT '중형 최대 수용 개수',
-  medium_enabled BOOLEAN DEFAULT TRUE COMMENT '중형 사용 가능 여부',
+  -- M 보관함
+  m_hourly_rate INT DEFAULT 3000 COMMENT 'M 시간당 요금',
+  m_daily_rate INT DEFAULT 24000 COMMENT 'M 일 요금',
+  m_hour_unit INT DEFAULT 1 COMMENT 'M 시간 단위',
+  m_max_capacity INT DEFAULT 8 COMMENT 'M 최대 수용 개수',
+  m_enabled BOOLEAN DEFAULT TRUE COMMENT 'M 사용 가능 여부',
 
-  -- 대형 보관함 가격
-  large_hourly_rate INT DEFAULT 5000 COMMENT '대형 시간당 요금',
-  large_daily_rate INT DEFAULT 40000 COMMENT '대형 일 요금',
-  large_hour_unit INT DEFAULT 1 COMMENT '대형 시간 단위',
-  large_max_capacity INT DEFAULT 3 COMMENT '대형 최대 수용 개수',
-  large_enabled BOOLEAN DEFAULT TRUE COMMENT '대형 사용 가능 여부',
+  -- L 보관함
+  l_hourly_rate INT DEFAULT 5000 COMMENT 'L 시간당 요금',
+  l_daily_rate INT DEFAULT 40000 COMMENT 'L 일 요금',
+  l_hour_unit INT DEFAULT 1 COMMENT 'L 시간 단위',
+  l_max_capacity INT DEFAULT 3 COMMENT 'L 최대 수용 개수',
+  l_enabled BOOLEAN DEFAULT TRUE COMMENT 'L 사용 가능 여부',
 
-  -- 냉장 보관
-  refrigeration_available BOOLEAN DEFAULT FALSE COMMENT '냉장 보관 가능 여부',
-  refrigeration_extra_fee INT DEFAULT 1000 COMMENT '냉장 추가 요금',
+  -- XL 보관함
+  xl_hourly_rate INT DEFAULT 7000 COMMENT 'XL 시간당 요금',
+  xl_daily_rate INT DEFAULT 55000 COMMENT 'XL 일 요금',
+  xl_hour_unit INT DEFAULT 1 COMMENT 'XL 시간 단위',
+  xl_max_capacity INT DEFAULT 2 COMMENT 'XL 최대 수용 개수',
+  xl_enabled BOOLEAN DEFAULT TRUE COMMENT 'XL 사용 가능 여부',
+
+  -- 특수 보관함
+  special_hourly_rate INT DEFAULT 10000 COMMENT '특수 시간당 요금',
+  special_daily_rate INT DEFAULT 70000 COMMENT '특수 일 요금',
+  special_hour_unit INT DEFAULT 1 COMMENT '특수 시간 단위',
+  special_max_capacity INT DEFAULT 1 COMMENT '특수 최대 수용 개수',
+  special_enabled BOOLEAN DEFAULT TRUE COMMENT '특수 사용 가능 여부',
+
+  -- 냉장 보관 (별도 타입)
+  refrigeration_hourly_rate INT DEFAULT 3000 COMMENT '냉장 시간당 요금',
+  refrigeration_daily_rate INT DEFAULT 20000 COMMENT '냉장 일 요금',
+  refrigeration_hour_unit INT DEFAULT 1 COMMENT '냉장 시간 단위',
   refrigeration_max_capacity INT DEFAULT 3 COMMENT '냉장 최대 수용 개수',
+  refrigeration_enabled BOOLEAN DEFAULT FALSE COMMENT '냉장 사용 가능 여부',
 
   -- 알림 설정
   new_reservation_notification BOOLEAN DEFAULT TRUE COMMENT '신규 예약 알림',
