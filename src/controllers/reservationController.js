@@ -343,7 +343,7 @@ export const getReservation = async (req, res) => {
  */
 export const approveReservation = async (req, res) => {
   try {
-    const storeId = req.storeId;
+    const storeId = req.storeId || req.body.storeId;
     const { id } = req.params;
     const { storageId, storageNumber } = req.body;
 
@@ -435,7 +435,7 @@ export const rejectReservation = async (req, res) => {
   const connection = await pool.getConnection();
   
   try {
-    const storeId = req.storeId;
+    const storeId = req.storeId || req.body.storeId;
     const { id } = req.params;
     const { reason } = req.body;
 
