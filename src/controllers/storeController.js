@@ -580,28 +580,42 @@ export const updateStoreSettings = async (req, res) => {
       auto_approval: operationSettings?.autoApproval || false,
       auto_overdue_notification: operationSettings?.autoOverdueNotification !== false,
 
-      // 보관함 가격 설정
-      small_hourly_rate: storageSettings?.small?.hourlyRate || 2000,
-      small_daily_rate: storageSettings?.small?.dailyRate || 15000,
-      small_hour_unit: storageSettings?.small?.hourUnit || 1,
-      small_max_capacity: storageSettings?.small?.maxCapacity || 5,
-      small_enabled: storageSettings?.isSmallEnabled || false,
+      // 보관함 가격 설정 (UI: extraSmall/small/medium/large/special, 냉장)
+      s_hourly_rate: storageSettings?.extraSmall?.hourlyRate || 2000,
+      s_daily_rate: storageSettings?.extraSmall?.dailyRate || 15000,
+      s_hour_unit: storageSettings?.extraSmall?.hourUnit || 1,
+      s_max_capacity: storageSettings?.extraSmall?.maxCapacity || 5,
+      s_enabled: storageSettings?.isExtraSmallEnabled || false,
 
-      medium_hourly_rate: storageSettings?.medium?.hourlyRate || 3000,
-      medium_daily_rate: storageSettings?.medium?.dailyRate || 24000,
-      medium_hour_unit: storageSettings?.medium?.hourUnit || 1,
-      medium_max_capacity: storageSettings?.medium?.maxCapacity || 8,
-      medium_enabled: storageSettings?.isMediumEnabled || false,
+      m_hourly_rate: storageSettings?.small?.hourlyRate || 3000,
+      m_daily_rate: storageSettings?.small?.dailyRate || 24000,
+      m_hour_unit: storageSettings?.small?.hourUnit || 1,
+      m_max_capacity: storageSettings?.small?.maxCapacity || 8,
+      m_enabled: storageSettings?.isSmallEnabled || false,
 
-      large_hourly_rate: storageSettings?.large?.hourlyRate || 5000,
-      large_daily_rate: storageSettings?.large?.dailyRate || 40000,
-      large_hour_unit: storageSettings?.large?.hourUnit || 1,
-      large_max_capacity: storageSettings?.large?.maxCapacity || 3,
-      large_enabled: storageSettings?.isLargeEnabled || false,
+      l_hourly_rate: storageSettings?.medium?.hourlyRate || 5000,
+      l_daily_rate: storageSettings?.medium?.dailyRate || 40000,
+      l_hour_unit: storageSettings?.medium?.hourUnit || 1,
+      l_max_capacity: storageSettings?.medium?.maxCapacity || 3,
+      l_enabled: storageSettings?.isMediumEnabled || false,
 
-      // 냉장 보관
-      refrigeration_available: storageSettings?.refrigerationAvailable || false,
-      refrigeration_extra_fee: storageSettings?.refrigerationExtraFee || 1000,
+      xl_hourly_rate: storageSettings?.large?.hourlyRate || 7000,
+      xl_daily_rate: storageSettings?.large?.dailyRate || 55000,
+      xl_hour_unit: storageSettings?.large?.hourUnit || 1,
+      xl_max_capacity: storageSettings?.large?.maxCapacity || 2,
+      xl_enabled: storageSettings?.isLargeEnabled || false,
+
+      special_hourly_rate: storageSettings?.special?.hourlyRate || 10000,
+      special_daily_rate: storageSettings?.special?.dailyRate || 70000,
+      special_hour_unit: storageSettings?.special?.hourUnit || 1,
+      special_max_capacity: storageSettings?.special?.maxCapacity || 1,
+      special_enabled: storageSettings?.isSpecialEnabled || false,
+
+      // 냉장 보관 (시간/일/단위/수용/사용여부)
+      refrigeration_enabled: storageSettings?.refrigerationAvailable || false,
+      refrigeration_hourly_rate: storageSettings?.refrigerationHourlyFee || 3000,
+      refrigeration_daily_rate: storageSettings?.refrigerationDailyFee || 20000,
+      refrigeration_hour_unit: storageSettings?.refrigerationHourUnit || 1,
       refrigeration_max_capacity: storageSettings?.refrigerationMaxCapacity || 3,
 
       // 알림 설정
