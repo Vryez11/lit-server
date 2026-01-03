@@ -53,7 +53,7 @@ export const getStorages = async (req, res) => {
       `SELECT
         s.id, s.store_id as storeId, s.number, s.type, s.status,
         s.width, s.height, s.depth, s.pricing,
-        s.floor, s.section, s.row_num as row, s.column_num as \`column\`,
+        s.floor, s.section, s.row_num as rowNum, s.column_num as columnNum,
         s.created_at as createdAt, s.updated_at as updatedAt,
         r.id as currentReservationId, r.customer_name as customerName,
         r.start_time as startTime, r.end_time as endTime
@@ -83,8 +83,8 @@ export const getStorages = async (req, res) => {
         location: {
           floor: storage.floor,
           section: storage.section,
-          row: storage.row,
-          column: storage.column,
+          row: storage.rowNum,
+          column: storage.columnNum,
         },
         createdAt: storage.createdAt,
         updatedAt: storage.updatedAt,
@@ -139,7 +139,7 @@ export const getStorage = async (req, res) => {
       `SELECT
         s.id, s.store_id as storeId, s.number, s.type, s.status,
         s.width, s.height, s.depth, s.pricing,
-        s.floor, s.section, s.row_num as row, s.column_num as \`column\`,
+        s.floor, s.section, s.row_num as rowNum, s.column_num as columnNum,
         s.created_at as createdAt, s.updated_at as updatedAt,
         r.id as currentReservationId, r.customer_name as customerName,
         r.customer_phone as customerPhone, r.start_time as startTime,
@@ -174,8 +174,8 @@ export const getStorage = async (req, res) => {
       location: {
         floor: storage.floor,
         section: storage.section,
-        row: storage.row,
-        column: storage.column,
+        row: storage.rowNum,
+        column: storage.columnNum,
       },
       createdAt: storage.createdAt,
       updatedAt: storage.updatedAt,
@@ -275,7 +275,7 @@ export const createStorage = async (req, res) => {
       `SELECT
         id, store_id as storeId, number, type, status,
         width, height, depth, pricing,
-        floor, section, row_num as row, column_num as \`column\`,
+        floor, section, row_num as rowNum, column_num as columnNum,
         created_at as createdAt, updated_at as updatedAt
       FROM storages
       WHERE id = ?
@@ -299,8 +299,8 @@ export const createStorage = async (req, res) => {
       location: {
         floor: storage.floor,
         section: storage.section,
-        row: storage.row,
-        column: storage.column,
+        row: storage.rowNum,
+        column: storage.columnNum,
       },
       createdAt: storage.createdAt,
       updatedAt: storage.updatedAt,
@@ -437,7 +437,7 @@ export const updateStorage = async (req, res) => {
       `SELECT
         id, store_id as storeId, number, type, status,
         width, height, depth, pricing,
-        floor, section, row_num as row, column_num as \`column\`,
+        floor, section, row_num as rowNum, column_num as columnNum,
         created_at as createdAt, updated_at as updatedAt
       FROM storages
       WHERE id = ?
@@ -461,8 +461,8 @@ export const updateStorage = async (req, res) => {
       location: {
         floor: storage.floor,
         section: storage.section,
-        row: storage.row,
-        column: storage.column,
+        row: storage.rowNum,
+        column: storage.columnNum,
       },
       createdAt: storage.createdAt,
       updatedAt: storage.updatedAt,
