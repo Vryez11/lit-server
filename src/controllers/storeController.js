@@ -595,9 +595,18 @@ export const updateStoreSettings = async (req, res) => {
       [storeId]
     );
 
+    // 사이즈별 총 수용량 합산 (enabled된 항목만)
+    const totalSlotsCalculated =
+      (storageSettings?.isExtraSmallEnabled ? storageSettings?.extraSmall?.maxCapacity || 0 : 0) +
+      (storageSettings?.isSmallEnabled ? storageSettings?.small?.maxCapacity || 0 : 0) +
+      (storageSettings?.isMediumEnabled ? storageSettings?.medium?.maxCapacity || 0 : 0) +
+      (storageSettings?.isLargeEnabled ? storageSettings?.large?.maxCapacity || 0 : 0) +
+      (storageSettings?.isSpecialEnabled ? storageSettings?.special?.maxCapacity || 0 : 0) +
+      (storageSettings?.refrigerationAvailable ? storageSettings?.refrigerationMaxCapacity || 0 : 0);
+
     const settingsData = {
       // 운영 설정
-      total_slots: operationSettings?.totalSlots || 20,
+      total_slots: totalSlotsCalculated || operationSettings?.totalSlots || 20,
       daily_rate_threshold: operationSettings?.dailyRateThreshold || 7,
       auto_approval: operationSettings?.autoApproval || false,
       auto_overdue_notification: operationSettings?.autoOverdueNotification !== false,
