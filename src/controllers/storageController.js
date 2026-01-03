@@ -22,7 +22,7 @@ export const getStorages = async (req, res) => {
     } = req.query;
 
     // 필터 조건 구성
-    const conditions = ['store_id = ?'];
+    const conditions = ['s.store_id = ?'];
     const params = [storeId];
 
     if (statusFilter) {
@@ -39,7 +39,7 @@ export const getStorages = async (req, res) => {
 
     // 전체 개수 조회
     const countResult = await query(
-      `SELECT COUNT(*) as total FROM storages WHERE ${whereClause}`,
+      `SELECT COUNT(*) as total FROM storages s WHERE ${whereClause}`,
       params
     );
     const totalItems = countResult[0].total;
