@@ -737,7 +737,7 @@ export const cancelReservation = async (req, res) => {
  */
 export const updateReservationStatus = async (req, res) => {
   try {
-    const storeId = req.storeId;
+    const storeId = req.storeId || req.body.storeId;
     const { id } = req.params;
     const { status: newStatus } = req.body;
 
@@ -752,6 +752,12 @@ export const updateReservationStatus = async (req, res) => {
     }
 
     // 예약 존재 확인
+    if (!storeId) {
+      return res.status(400).json(
+        error('VALIDATION_ERROR', 'storeId가 필요합니다')
+      );
+    }
+
     const reservations = await query(
       'SELECT status, storage_id FROM reservations WHERE id = ? AND store_id = ? LIMIT 1',
       [id, storeId]
