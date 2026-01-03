@@ -323,6 +323,14 @@ export const getStoreSettings = async (req, res) => {
   try {
     const storeId = req.storeId; // auth 미들웨어에서 설정
 
+    // 0. store 기본정보에서 description 조회
+    const storeRows = await query(
+      `SELECT description FROM stores WHERE id = ? LIMIT 1`,
+      [storeId]
+    );
+    const storeDescription =
+      storeRows && storeRows.length > 0 ? storeRows[0].description : null;
+
     // 1. store_operating_hours에서 운영시간 조회
     const hours = await query(
       `SELECT * FROM store_operating_hours WHERE store_id = ? LIMIT 1`,
@@ -433,7 +441,10 @@ export const getStoreSettings = async (req, res) => {
       success(
         {
           storeId,
-          basicInfo: { storePhotos: [] }, // 추후 구현
+          basicInfo: {
+            storePhotos: [],
+            description: storeDescription,
+          },
           operationSettings,
           storageSettings,
           notificationSettings,
@@ -466,15 +477,26 @@ export const updateStoreSettings = async (req, res) => {
       storageSettings,
       notificationSettings,
       categories,
-    } = req.body;
+  } = req.body;
 
-    console.log('[updateStoreSettings] 요청 데이터:', JSON.stringify(req.body, null, 2));
+  console.log('[updateStoreSettings] 요청 데이터:', JSON.stringify(req.body, null, 2));
 
-    // 1. stores 테이블 업데이트 - 초기 설정 완료 표시
+  // 기본 정보에서 매장 소개(description) 추출
+  const descriptionFromBasicInfo = basicInfo?.description;
+
+  // 1. stores 테이블 업데이트 - 초기 설정 완료 표시
+  await query(
+    `UPDATE stores SET has_completed_setup = 1, updated_at = NOW() WHERE id = ?`,
+    [storeId]
+  );
+
+  // description이 함께 전달된 경우 매장 소개 업데이트
+  if (descriptionFromBasicInfo !== undefined) {
     await query(
-      `UPDATE stores SET has_completed_setup = 1, updated_at = NOW() WHERE id = ?`,
-      [storeId]
+      `UPDATE stores SET description = ?, updated_at = NOW() WHERE id = ?`,
+      [descriptionFromBasicInfo, storeId]
     );
+  }
 
     // 2. store_operating_hours 테이블에 운영시간 저장 (operationSettings에서)
     if (operationSettings && operationSettings.dailyHours) {
@@ -692,7 +714,10 @@ export const updateStoreSettings = async (req, res) => {
       success(
         {
           storeId,
-          basicInfo: basicInfo || { storePhotos: [] },
+          basicInfo: {
+            storePhotos: basicInfo?.storePhotos || [],
+            description: descriptionFromBasicInfo ?? null,
+          },
           operationSettings,
           storageSettings,
           notificationSettings,
