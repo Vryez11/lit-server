@@ -367,29 +367,45 @@ export const getStoreSettings = async (req, res) => {
     } : null;
 
     const storageSettings = settings && settings.length > 0 ? {
+      // UI: extraSmall/small/medium/large/special -> DB: s/m/l/xl/special
+      extraSmall: {
+        hourlyRate: settings[0].s_hourly_rate,
+        dailyRate: settings[0].s_daily_rate,
+        hourUnit: settings[0].s_hour_unit,
+        maxCapacity: settings[0].s_max_capacity,
+      },
       small: {
-        hourlyRate: settings[0].small_hourly_rate,
-        dailyRate: settings[0].small_daily_rate,
-        hourUnit: settings[0].small_hour_unit,
-        maxCapacity: settings[0].small_max_capacity,
+        hourlyRate: settings[0].m_hourly_rate,
+        dailyRate: settings[0].m_daily_rate,
+        hourUnit: settings[0].m_hour_unit,
+        maxCapacity: settings[0].m_max_capacity,
       },
       medium: {
-        hourlyRate: settings[0].medium_hourly_rate,
-        dailyRate: settings[0].medium_daily_rate,
-        hourUnit: settings[0].medium_hour_unit,
-        maxCapacity: settings[0].medium_max_capacity,
+        hourlyRate: settings[0].l_hourly_rate,
+        dailyRate: settings[0].l_daily_rate,
+        hourUnit: settings[0].l_hour_unit,
+        maxCapacity: settings[0].l_max_capacity,
       },
       large: {
-        hourlyRate: settings[0].large_hourly_rate,
-        dailyRate: settings[0].large_daily_rate,
-        hourUnit: settings[0].large_hour_unit,
-        maxCapacity: settings[0].large_max_capacity,
+        hourlyRate: settings[0].xl_hourly_rate,
+        dailyRate: settings[0].xl_daily_rate,
+        hourUnit: settings[0].xl_hour_unit,
+        maxCapacity: settings[0].xl_max_capacity,
       },
-      isSmallEnabled: Boolean(settings[0].small_enabled),
-      isMediumEnabled: Boolean(settings[0].medium_enabled),
-      isLargeEnabled: Boolean(settings[0].large_enabled),
-      refrigerationAvailable: Boolean(settings[0].refrigeration_available),
-      refrigerationExtraFee: settings[0].refrigeration_extra_fee,
+      special: {
+        hourlyRate: settings[0].special_hourly_rate,
+        dailyRate: settings[0].special_daily_rate,
+        hourUnit: settings[0].special_hour_unit,
+        maxCapacity: settings[0].special_max_capacity,
+      },
+      isExtraSmallEnabled: Boolean(settings[0].s_enabled),
+      isSmallEnabled: Boolean(settings[0].m_enabled),
+      isMediumEnabled: Boolean(settings[0].l_enabled),
+      isLargeEnabled: Boolean(settings[0].xl_enabled),
+      isSpecialEnabled: Boolean(settings[0].special_enabled),
+      refrigerationAvailable: Boolean(settings[0].refrigeration_enabled),
+      refrigerationHourlyFee: settings[0].refrigeration_hourly_rate,
+      refrigerationDailyFee: settings[0].refrigeration_daily_rate,
       refrigerationMaxCapacity: settings[0].refrigeration_max_capacity,
     } : null;
 
