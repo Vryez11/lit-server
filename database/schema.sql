@@ -178,6 +178,9 @@ CREATE TABLE IF NOT EXISTS store_settings (
   overdue_notification BOOLEAN DEFAULT TRUE COMMENT '연체 알림',
   system_notification BOOLEAN DEFAULT TRUE COMMENT '시스템 알림',
 
+  -- 카테고리 (JSON 배열)
+  categories JSON COMMENT '카테고리 목록 (JSON 배열)',
+
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
 
