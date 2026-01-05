@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS storages (
   id VARCHAR(255) PRIMARY KEY COMMENT '보관함 ID',
   store_id VARCHAR(255) NOT NULL COMMENT '점포 ID',
   number VARCHAR(50) NOT NULL COMMENT '보관함 번호',
-  type ENUM('small', 'medium', 'large') NOT NULL COMMENT '보관함 크기',
+  type ENUM('small', 'medium', 'large', 'xl', 'special', 'refrigeration') NOT NULL COMMENT '보관함 크기',
   status ENUM('available', 'occupied', 'maintenance') DEFAULT 'available' COMMENT '보관함 상태',
 
   -- 크기 (cm)

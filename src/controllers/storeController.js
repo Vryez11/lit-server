@@ -4,6 +4,56 @@
 
 import { success, error } from '../utils/response.js';
 import { query } from '../config/database.js';
+import { v4 as uuidv4 } from 'uuid';
+
+// ========================================================================
+// 보관함 설정과 storages 테이블 동기화
+// ========================================================================
+const syncStoragesFromSettings = async (storeId, storageSettings = {}) => {
+  const typeConfigs = [
+    { enabledKey: 'isExtraSmallEnabled', settingsKey: 'extraSmall', type: 'small', prefix: 'S' },
+    { enabledKey: 'isSmallEnabled', settingsKey: 'small', type: 'medium', prefix: 'M' },
+    { enabledKey: 'isMediumEnabled', settingsKey: 'medium', type: 'large', prefix: 'L' },
+    { enabledKey: 'isLargeEnabled', settingsKey: 'large', type: 'xl', prefix: 'XL' },
+    { enabledKey: 'isSpecialEnabled', settingsKey: 'special', type: 'special', prefix: 'SP' },
+    { enabledKey: 'refrigerationAvailable', settingsKey: 'refrigeration', type: 'refrigeration', prefix: 'RF' },
+  ];
+
+  const existing = await query('SELECT type, number FROM storages WHERE store_id = ?', [storeId]);
+  const existingMap = {};
+  for (const row of existing) {
+    if (!existingMap[row.type]) existingMap[row.type] = new Set();
+    existingMap[row.type].add(row.number);
+  }
+
+  const inserts = [];
+  for (const cfg of typeConfigs) {
+    const enabled = storageSettings?.[cfg.enabledKey] !== false;
+    const capacity = storageSettings?.[cfg.settingsKey]?.maxCapacity || 0;
+    if (!enabled || capacity <= 0) continue;
+
+    const taken = existingMap[cfg.type] || new Set();
+    for (let i = 1; i <= capacity; i += 1) {
+      const number = `${cfg.prefix}${i}`;
+      if (!taken.has(number)) {
+        inserts.push({ number, type: cfg.type });
+      }
+    }
+  }
+
+  if (inserts.length > 0) {
+    const values = inserts.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())').join(', ');
+    const params = [];
+    inserts.forEach((item) => {
+      params.push(`stor_${uuidv4()}`, storeId, item.number, item.type, 'available', null, null, null, null, null);
+    });
+    await query(
+      `INSERT INTO storages (id, store_id, number, type, status, width, height, depth, pricing, floor, created_at, updated_at)
+       VALUES ${values}`,
+      params
+    );
+  }
+};
 
 /**
  * 점포 상태 조회
@@ -735,6 +785,9 @@ export const updateStoreSettings = async (req, res) => {
         '점포 설정 수정 성공'
       )
     );
+
+    // 보관함 설정과 storages 동기화 (부족한 개수 자동 생성)
+    await syncStoragesFromSettings(storeId, storageSettings);
   } catch (err) {
     console.error('점포 설정 수정 중 에러:', err);
     return res.status(500).json(
