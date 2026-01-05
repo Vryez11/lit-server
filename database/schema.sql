@@ -590,6 +590,58 @@ CREATE TABLE IF NOT EXISTS store_settlement_accounts (
 -- 테이블 변경 사항
 -- ============================================================================
 
+-- ============================================================================
+-- 19. customers - customer profiles
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS customers (
+  id VARCHAR(255) PRIMARY KEY COMMENT 'customer id',
+  email VARCHAR(255) UNIQUE COMMENT 'email (optional)',
+  name VARCHAR(255) COMMENT 'display name',
+  phone_number VARCHAR(20) COMMENT 'phone number',
+  profile_image_url TEXT COMMENT 'profile image url',
+  provider_type ENUM('kakao', 'naver', 'apple', 'local') NOT NULL COMMENT 'primary provider',
+  provider_id VARCHAR(255) COMMENT 'provider user id',
+  last_login_at DATETIME COMMENT 'last login time',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'created at',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'updated at',
+
+  INDEX idx_provider (provider_type, provider_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='customer basic profiles';
+
+-- ============================================================================
+-- 20. customer_auth_providers - linked social accounts
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS customer_auth_providers (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'link id',
+  customer_id VARCHAR(255) NOT NULL COMMENT 'customer id',
+  provider_type ENUM('kakao', 'naver', 'apple', 'local') NOT NULL COMMENT 'provider',
+  provider_id VARCHAR(255) NOT NULL COMMENT 'provider user id',
+  email VARCHAR(255) COMMENT 'provider email',
+  raw_profile JSON COMMENT 'raw profile data',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'created at',
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'updated at',
+
+  UNIQUE KEY uniq_provider (provider_type, provider_id),
+  INDEX idx_customer (customer_id),
+  FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='customer social links';
+
+-- ============================================================================
+-- 21. customer_refresh_tokens - refresh tokens for customers
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS customer_refresh_tokens (
+  id INT AUTO_INCREMENT PRIMARY KEY COMMENT 'token id',
+  customer_id VARCHAR(255) NOT NULL COMMENT 'customer id',
+  token VARCHAR(500) NOT NULL COMMENT 'refresh token',
+  expires_at TIMESTAMP NOT NULL COMMENT 'expires at',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'created at',
+
+  INDEX idx_token (token(255)),
+  INDEX idx_customer (customer_id),
+  INDEX idx_expires_at (expires_at),
+  FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='refresh tokens for customers';
+
 ALTER TABLE payments
   ADD COLUMN settlement_statement_id BIGINT UNSIGNED NULL COMMENT '포함된 정산 ID',
   ADD INDEX idx_settle (is_settled, store_id, paid_at),
