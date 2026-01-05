@@ -1,242 +1,168 @@
 /**
- * ?�?�보??컨트롤러
- * Phase 3 - ?�?�보???�약 ?�보 API
+ * Dashboard controllers
  */
 
 import { success, error } from '../utils/response.js';
 import { query } from '../config/database.js';
 
 /**
- * ?�?�보???�약 ?�보 조회
+ * 매장 대시보드 요약
  * GET /api/dashboard/summary
  */
 export const getDashboardSummary = async (req, res) => {
   try {
-    const storeId = req.storeId; // auth 미들?�어?�서 ?�정
+    const storeId = req.storeId;
 
-    // 1. ?�포 ?�보 조회
-    const stores = await query(
-      'SELECT business_name FROM stores WHERE id = ? LIMIT 1',
-      [storeId]
-    );
-
-    if (!stores || stores.length === 0) {
-      return res.status(404).json(
-        error('STORE_NOT_FOUND', '?�포�?찾을 ???�습?�다')
-      );
+    const storeRow = await query('SELECT business_name, created_at, updated_at FROM stores WHERE id = ? LIMIT 1', [
+      storeId,
+    ]);
+    if (!storeRow || storeRow.length === 0) {
+      return res.status(404).json(error('STORE_NOT_FOUND', '점포를 찾을 수 없습니다'));
     }
 
-    const storeName = stores[0].business_name;
-
-    // 2. ?�약 ?�계 조회
+    // 예약 통계
     const reservationStats = await query(
       `SELECT
-        COUNT(*) as totalReservations,
-        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pendingReservations,
-        SUM(CASE WHEN status = 'active' OR status = 'approved' THEN 1 ELSE 0 END) as activeReservations,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedReservations,
-        SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) as todayReservations
-      FROM reservations
-      WHERE store_id = ?`,
+         COUNT(*) AS totalReservations,
+         SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS pendingReservations,
+         SUM(CASE WHEN status IN ('active','approved') THEN 1 ELSE 0 END) AS activeReservations,
+         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completedReservations,
+         SUM(CASE WHEN DATE(created_at) = CURDATE() THEN 1 ELSE 0 END) AS todayReservations
+       FROM reservations
+       WHERE store_id = ?`,
       [storeId]
     );
+    const stats = reservationStats[0] || {};
 
-    const {
-      totalReservations = 0,
-      pendingReservations = 0,
-      activeReservations = 0,
-      completedReservations = 0,
-      todayReservations = 0,
-    } = reservationStats[0] || {};
-
-    // 3. 매출 ?�계 조회
+    // 매출 통계
     const revenueStats = await query(
       `SELECT
-        COALESCE(SUM(total_amount), 0) as totalRevenue,
-        COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() THEN total_amount ELSE 0 END), 0) as todayRevenue
-      FROM reservations
-      WHERE store_id = ? AND payment_status = 'paid'`,
+         COALESCE(SUM(total_amount), 0) AS totalRevenue,
+         COALESCE(SUM(CASE WHEN DATE(created_at) = CURDATE() THEN total_amount ELSE 0 END), 0) AS todayRevenue
+       FROM reservations
+       WHERE store_id = ? AND payment_status = 'paid'`,
       [storeId]
     );
+    const revenue = revenueStats[0] || {};
 
-    const {
-      totalRevenue = 0,
-      todayRevenue = 0,
-    } = revenueStats[0] || {};
-
-    // 4. 보�????�계 조회
+    // 보관함 통계
     const storageStats = await query(
       `SELECT
-        COUNT(*) as totalStorages,
-        SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) as availableStorages,
-        SUM(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) as occupiedStorages
-      FROM storages
-      WHERE store_id = ?`,
+         COUNT(*) AS totalStorages,
+         SUM(CASE WHEN status = 'available' THEN 1 ELSE 0 END) AS availableStorages,
+         SUM(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) AS occupiedStorages
+       FROM storages
+       WHERE store_id = ?`,
       [storeId]
     );
+    const storages = storageStats[0] || {};
+    const occupancyRate =
+      Number(storages.totalStorages || 0) > 0
+        ? Number((Number(storages.occupiedStorages || 0) / Number(storages.totalStorages || 0)).toFixed(2))
+        : 0;
 
-    const {
-      totalStorages = 0,
-      availableStorages = 0,
-      occupiedStorages = 0,
-    } = storageStats[0] || {};
-
-    // ?�유??계산
-    const occupancyRate = totalStorages > 0
-      ? (occupiedStorages / totalStorages)
-      : 0;
-
-    // 5. ?�포 ?�성???�정??조회
-    const storeInfo = await query(
-      'SELECT created_at, updated_at FROM stores WHERE id = ? LIMIT 1',
-      [storeId]
-    );
-
-    const createdAt = storeInfo[0]?.created_at || new Date();
-    const updatedAt = storeInfo[0]?.updated_at || new Date();
-
-    // 6. ?�답 ?�이??구성
     const responseData = {
-      storeName: storeName || '',
-      totalReservations: Number(totalReservations),
-      pendingReservations: Number(pendingReservations),
-      activeReservations: Number(activeReservations),
-      completedReservations: Number(completedReservations),
-      todayReservations: Number(todayReservations),
-      totalRevenue: Number(totalRevenue),
-      todayRevenue: Number(todayRevenue),
-      totalStorages: Number(totalStorages),
-      availableStorages: Number(availableStorages),
-      occupiedStorages: Number(occupiedStorages),
-      occupancyRate: Number(occupancyRate.toFixed(2)),
-      createdAt: createdAt ? (createdAt instanceof Date ? createdAt.toISOString() : createdAt) : new Date().toISOString(),
-      updatedAt: updatedAt ? (updatedAt instanceof Date ? updatedAt.toISOString() : updatedAt) : new Date().toISOString(),
+      storeName: storeRow[0].business_name || '',
+      totalReservations: Number(stats.totalReservations || 0),
+      pendingReservations: Number(stats.pendingReservations || 0),
+      activeReservations: Number(stats.activeReservations || 0),
+      completedReservations: Number(stats.completedReservations || 0),
+      todayReservations: Number(stats.todayReservations || 0),
+      totalRevenue: Number(revenue.totalRevenue || 0),
+      todayRevenue: Number(revenue.todayRevenue || 0),
+      totalStorages: Number(storages.totalStorages || 0),
+      availableStorages: Number(storages.availableStorages || 0),
+      occupiedStorages: Number(storages.occupiedStorages || 0),
+      occupancyRate,
+      createdAt: storeRow[0].created_at,
+      updatedAt: storeRow[0].updated_at,
     };
 
-
-    return res.json(
-      success(
-        responseData,
-        '?�?�보???�약 ?�보 조회 ?�공'
-      )
-    );
+    return res.json(success(responseData, '대시보드 요약 조회 성공'));
   } catch (err) {
-    console.error('?�?�보???�약 ?�보 조회 �??�러:', err);
-    return res.status(500).json(
-      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
-        message: err.message,
-      })
-    );
+    console.error('[getDashboardSummary] error:', err);
+    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
   }
 };
 
 /**
- * ?�?�보???�계 조회
- * GET /api/dashboard/stats
+ * 기간별 대시보드 통계
+ * GET /api/dashboard/stats?period=daily|weekly|monthly|yearly
  */
 export const getDashboardStats = async (req, res) => {
   try {
     const storeId = req.storeId;
-    const { period = 'monthly' } = req.query; // daily, weekly, monthly, yearly
+    const { period = 'monthly' } = req.query;
 
-    // 기간 ?�정
-    let dateFilter = '';
-    let startDate, endDate;
-
+    let dateFilter;
     switch (period) {
       case 'daily':
         dateFilter = 'DATE(created_at) = CURDATE()';
-        startDate = new Date();
-        endDate = new Date();
         break;
       case 'weekly':
         dateFilter = 'created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)';
-        startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-        endDate = new Date();
         break;
       case 'yearly':
         dateFilter = 'YEAR(created_at) = YEAR(NOW())';
-        startDate = new Date(new Date().getFullYear(), 0, 1);
-        endDate = new Date(new Date().getFullYear(), 11, 31);
         break;
       case 'monthly':
       default:
         dateFilter = 'YEAR(created_at) = YEAR(NOW()) AND MONTH(created_at) = MONTH(NOW())';
-        startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        endDate = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0);
         break;
     }
 
-    // 매출 ?�계
-    const revenueQuery = `
-      SELECT
-        COALESCE(SUM(total_amount), 0) as total,
-        COALESCE(AVG(total_amount), 0) as average,
-        COUNT(*) as count
-      FROM reservations
-      WHERE store_id = ? AND payment_status = 'paid' AND ${dateFilter}
-    `;
+    const revenueResult = await query(
+      `SELECT
+         COALESCE(SUM(total_amount), 0) AS total,
+         COALESCE(AVG(total_amount), 0) AS average,
+         COUNT(*) AS count
+       FROM reservations
+       WHERE store_id = ? AND payment_status = 'paid' AND ${dateFilter}`,
+      [storeId]
+    );
+    const revenue = revenueResult[0] || {};
 
-    const revenueResult = await query(revenueQuery, [storeId]);
-    const revenue = {
-      total: Number(revenueResult[0]?.total || 0),
-      average: Number(revenueResult[0]?.average || 0),
-      growth: 0, // TODO: ?�전 기간�?비교?�여 계산
-    };
+    const reservationResult = await query(
+      `SELECT
+         COUNT(*) AS total,
+         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) AS completed,
+         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) AS cancelled
+       FROM reservations
+       WHERE store_id = ? AND ${dateFilter}`,
+      [storeId]
+    );
+    const r = reservationResult[0] || {};
+    const total = Number(r.total || 0);
+    const completed = Number(r.completed || 0);
+    const cancelled = Number(r.cancelled || 0);
 
-    // ?�약 ?�계
-    const reservationQuery = `
-      SELECT
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled
-      FROM reservations
-      WHERE store_id = ? AND ${dateFilter}
-    `;
-
-    const reservationResult = await query(reservationQuery, [storeId]);
-    const total = Number(reservationResult[0]?.total || 0);
-    const completed = Number(reservationResult[0]?.completed || 0);
-    const cancelled = Number(reservationResult[0]?.cancelled || 0);
-
-    const reservations = {
-      total,
-      completed,
-      cancelled,
-      completionRate: total > 0 ? Number(((completed / total) * 100).toFixed(1)) : 0,
-    };
-
-    // ?�유???�계 (?�균)
-    const occupancyQuery = `
-      SELECT
-        AVG(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) as average
-      FROM storages
-      WHERE store_id = ?
-    `;
-
-    const occupancyResult = await query(occupancyQuery, [storeId]);
+    const occupancyResult = await query(
+      `SELECT
+         AVG(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) AS average
+       FROM storages
+       WHERE store_id = ?`,
+      [storeId]
+    );
     const occupancy = {
       average: Number(occupancyResult[0]?.average || 0).toFixed(2),
-      peak: 0.95, // TODO: ?�제 최고 ?�유??계산
-      peakTime: null, // TODO: 최고 ?�유???�간 계산
+      peak: 0,
+      peakTime: null,
     };
 
-    // 고객 만족???�계
-    const reviewQuery = `
-      SELECT
-        COALESCE(AVG(rating), 0) as averageRating,
-        COUNT(*) as totalReviews,
-        SUM(CASE WHEN response IS NOT NULL THEN 1 ELSE 0 END) as responded
-      FROM reviews
-      WHERE store_id = ?
-    `;
-
-    const reviewResult = await query(reviewQuery, [storeId]);
-    const totalReviews = Number(reviewResult[0]?.totalReviews || 0);
-    const responded = Number(reviewResult[0]?.responded || 0);
-
+    const reviewResult = await query(
+      `SELECT
+         COALESCE(AVG(rating), 0) AS averageRating,
+         COUNT(*) AS totalReviews,
+         SUM(CASE WHEN response IS NOT NULL THEN 1 ELSE 0 END) AS responded
+       FROM reviews
+       WHERE store_id = ?`,
+      [storeId]
+    );
+    const rev = reviewResult[0] || {};
+    const totalReviews = Number(rev.totalReviews || 0);
+    const responded = Number(rev.responded || 0);
     const customerSatisfaction = {
-      averageRating: Number(reviewResult[0]?.averageRating || 0).toFixed(1),
+      averageRating: Number(rev.averageRating || 0).toFixed(1),
       totalReviews,
       responseRate: totalReviews > 0 ? Number(((responded / totalReviews) * 100).toFixed(1)) : 0,
     };
@@ -245,75 +171,68 @@ export const getDashboardStats = async (req, res) => {
       success(
         {
           period,
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          revenue,
-          reservations,
+          revenue: {
+            total: Number(revenue.total || 0),
+            average: Number(revenue.average || 0),
+            count: Number(revenue.count || 0),
+            growth: 0,
+          },
+          reservations: {
+            total,
+            completed,
+            cancelled,
+            completionRate: total > 0 ? Number(((completed / total) * 100).toFixed(1)) : 0,
+          },
           occupancy,
           customerSatisfaction,
         },
-        '?�?�보???�계 조회 ?�공'
+        '대시보드 통계 조회 성공'
       )
     );
   } catch (err) {
-    console.error('?�?�보???�계 조회 �??�러:', err);
-    return res.status(500).json(
-      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
-        message: err.message,
-      })
-    );
+    console.error('[getDashboardStats] error:', err);
+    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
   }
 };
 
 /**
- * ?�시�??�?�보???�이??조회
+ * 실시간 대시보드
  * GET /api/dashboard/realtime
  */
 export const getDashboardRealtime = async (req, res) => {
   try {
     const storeId = req.storeId;
 
-    // ?�재 ?�포 ?�태
-    const statusResult = await query(
-      'SELECT status FROM store_status WHERE store_id = ? LIMIT 1',
-      [storeId]
-    );
-
+    const statusResult = await query('SELECT status FROM store_status WHERE store_id = ? LIMIT 1', [storeId]);
     const storeStatus = statusResult[0]?.status || 'closed';
 
-    // ?�재 ?�성 ?�약 ??    const activeReservations = await query(
+    const activeReservations = await query(
       `SELECT COUNT(*) as count FROM reservations
        WHERE store_id = ? AND (status = 'active' OR status = 'approved')`,
       [storeId]
     );
-
-    // ?��?중인 ?�약 ??    const pendingReservations = await query(
+    const pendingReservations = await query(
       `SELECT COUNT(*) as count FROM reservations
        WHERE store_id = ? AND status = 'pending'`,
       [storeId]
     );
-
-    // ?�늘 매출
     const todayRevenue = await query(
       `SELECT COALESCE(SUM(total_amount), 0) as revenue
        FROM reservations
        WHERE store_id = ? AND DATE(created_at) = CURDATE() AND payment_status = 'paid'`,
       [storeId]
     );
-
-    // ?�재 ?�유 보�?????    const occupiedStorages = await query(
+    const occupiedStorages = await query(
       `SELECT COUNT(*) as count FROM storages
        WHERE store_id = ? AND status = 'occupied'`,
       [storeId]
     );
-
-    // ?�용 가?�한 보�?????    const availableStorages = await query(
+    const availableStorages = await query(
       `SELECT COUNT(*) as count FROM storages
        WHERE store_id = ? AND status = 'available'`,
       [storeId]
     );
-
-    // ?��? ?��? ?�림 ??    const unreadNotifications = await query(
+    const unreadNotifications = await query(
       `SELECT COUNT(*) as count FROM notifications
        WHERE store_id = ? AND is_read = 0`,
       [storeId]
@@ -331,15 +250,11 @@ export const getDashboardRealtime = async (req, res) => {
           unreadNotifications: Number(unreadNotifications[0]?.count || 0),
           lastUpdated: new Date(),
         },
-        '?�시�??�?�보???�이??조회 ?�공'
+        '실시간 대시보드 조회 성공'
       )
     );
   } catch (err) {
-    console.error('?�시�??�?�보???�이??조회 �??�러:', err);
-    return res.status(500).json(
-      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
-        message: err.message,
-      })
-    );
+    console.error('[getDashboardRealtime] error:', err);
+    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
   }
 };
