@@ -10,13 +10,48 @@ import { v4 as uuidv4 } from 'uuid';
 // 보관함 설정과 storages 테이블 동기화
 // ========================================================================
 const syncStoragesFromSettings = async (storeId, storageSettings = {}) => {
+  // enabled/capacity는 UI에서 오는 payload 형태에 맞춰 안전하게 추출
   const typeConfigs = [
-    { enabledKey: 'isExtraSmallEnabled', settingsKey: 'extraSmall', type: 'small', prefix: 'S' },
-    { enabledKey: 'isSmallEnabled', settingsKey: 'small', type: 'medium', prefix: 'M' },
-    { enabledKey: 'isMediumEnabled', settingsKey: 'medium', type: 'large', prefix: 'L' },
-    { enabledKey: 'isLargeEnabled', settingsKey: 'large', type: 'xl', prefix: 'XL' },
-    { enabledKey: 'isSpecialEnabled', settingsKey: 'special', type: 'special', prefix: 'SP' },
-    { enabledKey: 'refrigerationAvailable', settingsKey: 'refrigeration', type: 'refrigeration', prefix: 'RF' },
+    {
+      type: 's',
+      prefix: 'S',
+      isEnabled: storageSettings?.isExtraSmallEnabled !== false,
+      capacity: storageSettings?.extraSmall?.maxCapacity || 0,
+    },
+    {
+      type: 'm',
+      prefix: 'M',
+      isEnabled: storageSettings?.isSmallEnabled !== false,
+      capacity: storageSettings?.small?.maxCapacity || 0,
+    },
+    {
+      type: 'l',
+      prefix: 'L',
+      isEnabled: storageSettings?.isMediumEnabled !== false,
+      capacity: storageSettings?.medium?.maxCapacity || 0,
+    },
+    {
+      type: 'xl',
+      prefix: 'XL',
+      isEnabled: storageSettings?.isLargeEnabled !== false,
+      capacity: storageSettings?.large?.maxCapacity || 0,
+    },
+    {
+      type: 'special',
+      prefix: 'SP',
+      isEnabled: storageSettings?.isSpecialEnabled !== false,
+      capacity: storageSettings?.special?.maxCapacity || 0,
+    },
+    {
+      type: 'refrigeration',
+      prefix: 'RF',
+      isEnabled: storageSettings?.refrigerationAvailable !== false,
+      capacity:
+        storageSettings?.refrigeration?.maxCapacity ||
+        storageSettings?.refrigerationMaxCapacity ||
+        storageSettings?.refrigeration_max_capacity ||
+        0,
+    },
   ];
 
   const existing = await query('SELECT type, number FROM storages WHERE store_id = ?', [storeId]);
@@ -28,12 +63,10 @@ const syncStoragesFromSettings = async (storeId, storageSettings = {}) => {
 
   const inserts = [];
   for (const cfg of typeConfigs) {
-    const enabled = storageSettings?.[cfg.enabledKey] !== false;
-    const capacity = storageSettings?.[cfg.settingsKey]?.maxCapacity || 0;
-    if (!enabled || capacity <= 0) continue;
+    if (!cfg.isEnabled || cfg.capacity <= 0) continue;
 
     const taken = existingMap[cfg.type] || new Set();
-    for (let i = 1; i <= capacity; i += 1) {
+    for (let i = 1; i <= cfg.capacity; i += 1) {
       const number = `${cfg.prefix}${i}`;
       if (!taken.has(number)) {
         inserts.push({ number, type: cfg.type });
