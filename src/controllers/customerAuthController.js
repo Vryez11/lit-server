@@ -1,6 +1,6 @@
 /**
- * 고객용 소셜 로그인 컨트롤러 (카카오 등)
- * NOTE: 외부 토큰 검증은 추후 추가 필요. 현재는 토큰 해시 기반으로 사용자 생성/조회.
+ * Customer social login controller (Kakao, etc.)
+ * NOTE: External token validation is not performed yet; we hash accessToken (or use socialId) to link the provider.
  */
 
 import crypto from 'crypto';
@@ -49,7 +49,16 @@ const verifyRefresh = (token) => {
 
 export const socialLogin = async (req, res) => {
   try {
-    const { provider, accessToken } = req.body;
+    const {
+      provider,
+      accessToken,
+      refreshToken: providerRefreshToken,
+      socialId,
+      name,
+      email,
+      profileImage,
+      phoneNumber,
+    } = req.body;
 
     if (!provider || !accessToken) {
       return res
@@ -57,31 +66,65 @@ export const socialLogin = async (req, res) => {
         .json(error('VALIDATION_ERROR', 'provider와 accessToken이 필요합니다', { required: ['provider', 'accessToken'] }));
     }
 
-    // 외부 검증은 생략하고 토큰 해시를 provider_id로 사용
-    const providerId = crypto.createHash('sha256').update(accessToken).digest('hex');
+    const providerKey = provider.toLowerCase();
+    // If socialId exists (preferred), use it; otherwise hash the token as a stable key.
+    const providerId = socialId || crypto.createHash('sha256').update(accessToken).digest('hex');
 
-    // 고객 조회/생성
     const existing = await query(
       'SELECT * FROM customers WHERE provider_type = ? AND provider_id = ? LIMIT 1',
-      [provider.toLowerCase(), providerId]
+      [providerKey, providerId]
     );
 
     let customerId;
+    let isNewUser = false;
+
     if (existing && existing.length > 0) {
       customerId = existing[0].id;
-      await query('UPDATE customers SET last_login_at = NOW() WHERE id = ?', [customerId]);
+      await query(
+        `UPDATE customers
+           SET last_login_at = NOW(),
+               name = COALESCE(?, name),
+               email = COALESCE(?, email),
+               phone_number = COALESCE(?, phone_number),
+               profile_image_url = COALESCE(?, profile_image_url)
+         WHERE id = ?`,
+        [name || null, email || null, phoneNumber || null, profileImage || null, customerId]
+      );
     } else {
+      isNewUser = true;
       customerId = `cust_${uuidv4()}`;
       await query(
-        `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, last_login_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
-        [customerId, provider.toLowerCase(), providerId, '사용자', null, null]
+        `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, profile_image_url, last_login_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+        [customerId, providerKey, providerId, name || '사용자', email || null, phoneNumber || null, profileImage || null]
       );
     }
 
-    // 토큰 생성/저장
-    const access = generateCustomerAccessToken(customerId, provider);
-    const refresh = generateCustomerRefreshToken(customerId, provider);
+    // Link provider info (upsert)
+    const providerLink = await query(
+      'SELECT id FROM customer_auth_providers WHERE provider_type = ? AND provider_id = ? LIMIT 1',
+      [providerKey, providerId]
+    );
+    if (providerLink && providerLink.length > 0) {
+      await query(
+        `UPDATE customer_auth_providers
+           SET email = COALESCE(?, email),
+               raw_profile = COALESCE(?, raw_profile),
+               updated_at = NOW()
+         WHERE id = ?`,
+        [email || null, null, providerLink[0].id]
+      );
+    } else {
+      await query(
+        `INSERT INTO customer_auth_providers (customer_id, provider_type, provider_id, email, raw_profile, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+        [customerId, providerKey, providerId, email || null, null]
+      );
+    }
+
+    // Issue tokens and persist refresh token
+    const access = generateCustomerAccessToken(customerId, providerKey);
+    const refresh = generateCustomerRefreshToken(customerId, providerKey);
     await query(
       `INSERT INTO customer_refresh_tokens (customer_id, token, expires_at, created_at)
        VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY), NOW())`,
@@ -90,15 +133,17 @@ export const socialLogin = async (req, res) => {
 
     return res.json(
       success({
+        isNewUser,
         accessToken: access,
         refreshToken: refresh,
-        user: {
-          id: customerId,
-          name: existing?.[0]?.name || '사용자',
-          email: existing?.[0]?.email || null,
-          phoneNumber: existing?.[0]?.phone_number || null,
-          provider,
-        },
+        providerRefreshToken: providerRefreshToken || null,
+        userId: customerId,
+        customerId,
+        name: name || existing?.[0]?.name || '사용자',
+        email: email || existing?.[0]?.email || null,
+        phoneNumber: phoneNumber || existing?.[0]?.phone_number || null,
+        profileImage: profileImage || existing?.[0]?.profile_image_url || null,
+        provider: providerKey,
       })
     );
   } catch (err) {
@@ -129,7 +174,7 @@ export const refreshToken = async (req, res) => {
     const newRefresh = generateCustomerRefreshToken(customerId, provider);
 
     await query(
-      `UPDATE customer_refresh_tokens SET token = ?, expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY), updated_at = NOW() WHERE id = ?`,
+      `UPDATE customer_refresh_tokens SET token = ?, expires_at = DATE_ADD(NOW(), INTERVAL 30 DAY) WHERE id = ?`,
       [newRefresh, records[0].id]
     );
 
@@ -167,7 +212,7 @@ export const getMe = async (req, res) => {
     }
 
     const { customerId } = verified.payload;
-    const rows = await query('SELECT id, email, name, phone_number, provider_type FROM customers WHERE id = ? LIMIT 1', [
+    const rows = await query('SELECT id, email, name, phone_number, provider_type, profile_image_url FROM customers WHERE id = ? LIMIT 1', [
       customerId,
     ]);
     if (!rows || rows.length === 0) {
@@ -182,6 +227,7 @@ export const getMe = async (req, res) => {
         name: user.name,
         phoneNumber: user.phone_number,
         provider: user.provider_type,
+        profileImage: user.profile_image_url,
       })
     );
   } catch (err) {
