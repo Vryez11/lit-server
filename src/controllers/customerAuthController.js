@@ -124,7 +124,7 @@ export const socialLogin = async (req, res) => {
           carrier || null,
           gender || null,
           profileImage || null,
-          toBit(termsAgreed),
+          toBit(termsAgreed, 0),
           toBit(privacyAgreed, 0),
           toBit(locationAgreed, 0),
           toBit(marketingAgreed, 0),
@@ -135,8 +135,8 @@ export const socialLogin = async (req, res) => {
       isNewUser = true;
       customerId = `cust_${uuidv4()}`;
       await query(
-        `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, birth_date, carrier, profile_image_url, terms_agreed, privacy_agreed, location_agreed, marketing_agreed, last_login_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+        `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, birth_date, carrier, gender, profile_image_url, terms_agreed, privacy_agreed, location_agreed, marketing_agreed, last_login_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
         [
           customerId,
           providerKey,
@@ -148,7 +148,7 @@ export const socialLogin = async (req, res) => {
           carrier || null,
           gender || null,
           profileImage || null,
-          toBit(termsAgreed),
+          toBit(termsAgreed, 0),
           toBit(privacyAgreed, 0),
           toBit(locationAgreed, 0),
           toBit(marketingAgreed, 0),
@@ -267,8 +267,8 @@ export const signupCustomer = async (req, res) => {
         isNewUser = true;
         customerId = `cust_${uuidv4()}`;
         await query(
-          `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, birth_date, carrier, profile_image_url, terms_agreed, privacy_agreed, location_agreed, marketing_agreed, last_login_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+          `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, birth_date, carrier, gender, profile_image_url, terms_agreed, privacy_agreed, location_agreed, marketing_agreed, last_login_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
           [
             customerId,
             providerKey,
@@ -280,7 +280,7 @@ export const signupCustomer = async (req, res) => {
             carrier || null,
             gender || null,
             profileImage || null,
-            toBit(termsAgreed),
+            toBit(termsAgreed, 0),
             toBit(privacyAgreed, 0),
             toBit(locationAgreed, 0),
             toBit(marketingAgreed, 0),
@@ -298,25 +298,25 @@ export const signupCustomer = async (req, res) => {
         isNewUser = true;
         customerId = `cust_${uuidv4()}`;
         await query(
-          `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, birth_date, carrier, profile_image_url, terms_agreed, privacy_agreed, location_agreed, marketing_agreed, last_login_at, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
-          [
-            customerId,
-            providerKey,
-            providerId,
-            name || '사용자',
-            email || null,
-            phoneNumber || null,
-            birthDate || null,
-            carrier || null,
-            gender || null,
-            profileImage || null,
-            toBit(termsAgreed),
-            toBit(privacyAgreed, 0),
-            toBit(locationAgreed, 0),
-            toBit(marketingAgreed, 0),
-          ]
-        );
+        `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, birth_date, carrier, gender, profile_image_url, terms_agreed, privacy_agreed, location_agreed, marketing_agreed, last_login_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+        [
+          customerId,
+          providerKey,
+          providerId,
+          name || '사용자',
+          email || null,
+          phoneNumber || null,
+          birthDate || null,
+          carrier || null,
+          gender || null,
+          profileImage || null,
+          toBit(termsAgreed, 0),
+          toBit(privacyAgreed, 0),
+          toBit(locationAgreed, 0),
+          toBit(marketingAgreed, 0),
+        ]
+      );
       }
     }
 
