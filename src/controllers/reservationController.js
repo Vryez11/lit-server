@@ -67,7 +67,7 @@ export const createReservation = async (req, res) => {
     }
 
     // 고객 ID 생성 (실제로는 고객 앱에서 전달받아야 함)
-    const customerId = req.body.customerId || `customer_${Date.now()}`;
+    const customerId = req.customerId || req.body.customerId || `customer_${Date.now()}`;
 
     // 예약 생성
     await query(
