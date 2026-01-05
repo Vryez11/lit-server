@@ -332,6 +332,7 @@ export const signupCustomer = async (req, res) => {
              phone_number = COALESCE(?, phone_number),
              birth_date = COALESCE(?, birth_date),
              carrier = COALESCE(?, carrier),
+             gender = COALESCE(?, gender),
              profile_image_url = COALESCE(?, profile_image_url),
              terms_agreed = COALESCE(?, terms_agreed),
              privacy_agreed = COALESCE(?, privacy_agreed),
