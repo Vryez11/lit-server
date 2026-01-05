@@ -603,6 +603,7 @@ CREATE TABLE IF NOT EXISTS customers (
   profile_image_url TEXT COMMENT 'profile image url',
   provider_type ENUM('kakao', 'naver', 'apple', 'local') NOT NULL COMMENT 'primary provider',
   provider_id VARCHAR(255) COMMENT 'provider user id',
+  UNIQUE KEY uniq_customer_provider (provider_type, provider_id),
   terms_agreed TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'terms of service agreed',
   privacy_agreed TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'privacy policy agreed',
   location_agreed TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'location terms agreed',

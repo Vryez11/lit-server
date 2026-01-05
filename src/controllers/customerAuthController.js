@@ -72,14 +72,18 @@ export const socialLogin = async (req, res) => {
 
     const accessTokenInput = accessToken || socialAccessToken;
 
-    if (!provider || !accessTokenInput) {
+    if (!provider || !socialId || !accessTokenInput) {
       return res
         .status(400)
-        .json(error('VALIDATION_ERROR', 'provider와 accessToken이 필요합니다', { required: ['provider', 'accessToken'] }));
+        .json(
+          error('VALIDATION_ERROR', 'provider, socialId, accessToken이 필요합니다', {
+            required: ['provider', 'socialId', 'accessToken'],
+          })
+        );
     }
 
     const providerKey = provider.toLowerCase();
-    const providerId = socialId || crypto.createHash('sha256').update(accessTokenInput).digest('hex');
+    const providerId = socialId; // 고정 식별자 사용 (access token 해시 미사용)
 
     const existing = await query(
       'SELECT * FROM customers WHERE provider_type = ? AND provider_id = ? LIMIT 1',
@@ -228,17 +232,16 @@ export const signupCustomer = async (req, res) => {
 
     const accessTokenInput = accessToken || socialAccessToken;
 
-    if (!provider || (!socialId && !accessTokenInput && !userId && !customerIdFromBody)) {
+    if (!provider || (!socialId && !userId && !customerIdFromBody)) {
       return res.status(400).json(
-        error('VALIDATION_ERROR', 'provider와 socialId/accessToken 또는 userId가 필요합니다', {
-          required: ['provider', 'socialId|accessToken|userId'],
+        error('VALIDATION_ERROR', 'provider와 socialId 또는 userId가 필요합니다', {
+          required: ['provider', 'socialId|userId'],
         })
       );
     }
 
     const providerKey = provider.toLowerCase();
-    const providerId =
-      socialId || (accessTokenInput ? crypto.createHash('sha256').update(accessTokenInput).digest('hex') : null);
+    const providerId = socialId || null; // 고정 식별자만 사용
     let customerId = userId || customerIdFromBody || null;
     let isNewUser = false;
 
