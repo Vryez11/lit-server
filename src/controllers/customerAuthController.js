@@ -1,6 +1,6 @@
 /**
- * Customer social login controller (Kakao, etc.)
- * NOTE: External token validation is not performed yet; we hash accessToken (or use socialId) to link the provider.
+ * Customer social login / signup controller (e.g., Kakao)
+ * NOTE: External provider token validation is not implemented yet.
  */
 
 import crypto from 'crypto';
@@ -47,28 +47,39 @@ const verifyRefresh = (token) => {
   }
 };
 
+/**
+ * 소셜 로그인: 신규면 생성, 기존이면 갱신 후 토큰 발급
+ */
 export const socialLogin = async (req, res) => {
   try {
     const {
       provider,
       accessToken,
+      socialAccessToken,
       refreshToken: providerRefreshToken,
       socialId,
       name,
       email,
       profileImage,
       phoneNumber,
+      birthDate,
+      carrier,
+      termsAgreed,
+      privacyAgreed,
+      locationAgreed,
+      marketingAgreed,
     } = req.body;
 
-    if (!provider || !accessToken) {
+    const accessTokenInput = accessToken || socialAccessToken;
+
+    if (!provider || !accessTokenInput) {
       return res
         .status(400)
         .json(error('VALIDATION_ERROR', 'provider와 accessToken이 필요합니다', { required: ['provider', 'accessToken'] }));
     }
 
     const providerKey = provider.toLowerCase();
-    // If socialId exists (preferred), use it; otherwise hash the token as a stable key.
-    const providerId = socialId || crypto.createHash('sha256').update(accessToken).digest('hex');
+    const providerId = socialId || crypto.createHash('sha256').update(accessTokenInput).digest('hex');
 
     const existing = await query(
       'SELECT * FROM customers WHERE provider_type = ? AND provider_id = ? LIMIT 1',
@@ -86,21 +97,53 @@ export const socialLogin = async (req, res) => {
                name = COALESCE(?, name),
                email = COALESCE(?, email),
                phone_number = COALESCE(?, phone_number),
-               profile_image_url = COALESCE(?, profile_image_url)
+               birth_date = COALESCE(?, birth_date),
+               carrier = COALESCE(?, carrier),
+               profile_image_url = COALESCE(?, profile_image_url),
+               terms_agreed = COALESCE(?, terms_agreed),
+               privacy_agreed = COALESCE(?, privacy_agreed),
+               location_agreed = COALESCE(?, location_agreed),
+               marketing_agreed = COALESCE(?, marketing_agreed)
          WHERE id = ?`,
-        [name || null, email || null, phoneNumber || null, profileImage || null, customerId]
+        [
+          name || null,
+          email || null,
+          phoneNumber || null,
+          birthDate || null,
+          carrier || null,
+          profileImage || null,
+          termsAgreed ?? null,
+          privacyAgreed ?? null,
+          locationAgreed ?? null,
+          marketingAgreed ?? null,
+          customerId,
+        ]
       );
     } else {
       isNewUser = true;
       customerId = `cust_${uuidv4()}`;
       await query(
-        `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, profile_image_url, last_login_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
-        [customerId, providerKey, providerId, name || '사용자', email || null, phoneNumber || null, profileImage || null]
+        `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, birth_date, carrier, profile_image_url, terms_agreed, privacy_agreed, location_agreed, marketing_agreed, last_login_at, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+        [
+          customerId,
+          providerKey,
+          providerId,
+          name || '사용자',
+          email || null,
+          phoneNumber || null,
+          birthDate || null,
+          carrier || null,
+          profileImage || null,
+          termsAgreed ?? 0,
+          privacyAgreed ?? 0,
+          locationAgreed ?? 0,
+          marketingAgreed ?? 0,
+        ]
       );
     }
 
-    // Link provider info (upsert)
+    // provider 링크 upsert
     const providerLink = await query(
       'SELECT id FROM customer_auth_providers WHERE provider_type = ? AND provider_id = ? LIMIT 1',
       [providerKey, providerId]
@@ -122,7 +165,7 @@ export const socialLogin = async (req, res) => {
       );
     }
 
-    // Issue tokens and persist refresh token
+    // 토큰 발급 및 refresh 저장
     const access = generateCustomerAccessToken(customerId, providerKey);
     const refresh = generateCustomerRefreshToken(customerId, providerKey);
     await query(
@@ -143,11 +186,208 @@ export const socialLogin = async (req, res) => {
         email: email || existing?.[0]?.email || null,
         phoneNumber: phoneNumber || existing?.[0]?.phone_number || null,
         profileImage: profileImage || existing?.[0]?.profile_image_url || null,
+        birthDate: birthDate || existing?.[0]?.birth_date || null,
+        carrier: carrier || existing?.[0]?.carrier || null,
+        termsAgreed: termsAgreed ?? existing?.[0]?.terms_agreed ?? 0,
+        privacyAgreed: privacyAgreed ?? existing?.[0]?.privacy_agreed ?? 0,
+        locationAgreed: locationAgreed ?? existing?.[0]?.location_agreed ?? 0,
+        marketingAgreed: marketingAgreed ?? existing?.[0]?.marketing_agreed ?? 0,
         provider: providerKey,
       })
     );
   } catch (err) {
     console.error('[socialLogin] error:', err);
+    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+  }
+};
+
+/**
+ * 신규 회원 가입(온보딩) 완료 처리
+ * isNewUser=true 분기에서 호출하는 API
+ */
+export const signupCustomer = async (req, res) => {
+  try {
+    const {
+      provider,
+      socialId,
+      accessToken,
+      socialAccessToken,
+      userId,
+      customerId: customerIdFromBody,
+      name,
+      email,
+      phoneNumber,
+      profileImage,
+      birthDate,
+      carrier,
+      termsAgreed,
+      privacyAgreed,
+      locationAgreed,
+      marketingAgreed,
+    } = req.body;
+
+    const accessTokenInput = accessToken || socialAccessToken;
+
+    if (!provider || (!socialId && !accessTokenInput && !userId && !customerIdFromBody)) {
+      return res.status(400).json(
+        error('VALIDATION_ERROR', 'provider와 socialId/accessToken 또는 userId가 필요합니다', {
+          required: ['provider', 'socialId|accessToken|userId'],
+        })
+      );
+    }
+
+    const providerKey = provider.toLowerCase();
+    const providerId =
+      socialId || (accessTokenInput ? crypto.createHash('sha256').update(accessTokenInput).digest('hex') : null);
+    let customerId = userId || customerIdFromBody || null;
+    let isNewUser = false;
+
+    // 식별 우선순위: userId -> provider + providerId
+    if (customerId) {
+      const exists = await query('SELECT id FROM customers WHERE id = ? LIMIT 1', [customerId]);
+      if (!exists || exists.length === 0) {
+        isNewUser = true;
+        customerId = `cust_${uuidv4()}`;
+        await query(
+          `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, birth_date, carrier, profile_image_url, terms_agreed, privacy_agreed, location_agreed, marketing_agreed, last_login_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+          [
+            customerId,
+            providerKey,
+            providerId,
+            name || '사용자',
+            email || null,
+            phoneNumber || null,
+            birthDate || null,
+            carrier || null,
+            profileImage || null,
+            termsAgreed ?? 0,
+            privacyAgreed ?? 0,
+            locationAgreed ?? 0,
+            marketingAgreed ?? 0,
+          ]
+        );
+      }
+    } else if (providerId) {
+      const existing = await query(
+        'SELECT * FROM customers WHERE provider_type = ? AND provider_id = ? LIMIT 1',
+        [providerKey, providerId]
+      );
+      if (existing && existing.length > 0) {
+        customerId = existing[0].id;
+      } else {
+        isNewUser = true;
+        customerId = `cust_${uuidv4()}`;
+        await query(
+          `INSERT INTO customers (id, provider_type, provider_id, name, email, phone_number, birth_date, carrier, profile_image_url, terms_agreed, privacy_agreed, location_agreed, marketing_agreed, last_login_at, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW(), NOW())`,
+          [
+            customerId,
+            providerKey,
+            providerId,
+            name || '사용자',
+            email || null,
+            phoneNumber || null,
+            birthDate || null,
+            carrier || null,
+            profileImage || null,
+            termsAgreed ?? 0,
+            privacyAgreed ?? 0,
+            locationAgreed ?? 0,
+            marketingAgreed ?? 0,
+          ]
+        );
+      }
+    }
+
+    if (!customerId) {
+      return res.status(400).json(error('VALIDATION_ERROR', 'customerId를 결정할 수 없습니다'));
+    }
+
+    // 프로필 업데이트
+    await query(
+      `UPDATE customers
+         SET name = COALESCE(?, name),
+             email = COALESCE(?, email),
+             phone_number = COALESCE(?, phone_number),
+             birth_date = COALESCE(?, birth_date),
+             carrier = COALESCE(?, carrier),
+             profile_image_url = COALESCE(?, profile_image_url),
+             terms_agreed = COALESCE(?, terms_agreed),
+             privacy_agreed = COALESCE(?, privacy_agreed),
+             location_agreed = COALESCE(?, location_agreed),
+             marketing_agreed = COALESCE(?, marketing_agreed),
+             last_login_at = NOW()
+       WHERE id = ?`,
+      [
+        name || null,
+        email || null,
+        phoneNumber || null,
+        birthDate || null,
+        carrier || null,
+        profileImage || null,
+        termsAgreed ?? null,
+        privacyAgreed ?? null,
+        locationAgreed ?? null,
+        marketingAgreed ?? null,
+        customerId,
+      ]
+    );
+
+    // provider 링크 upsert
+    if (providerId) {
+      const providerLink = await query(
+        'SELECT id FROM customer_auth_providers WHERE provider_type = ? AND provider_id = ? LIMIT 1',
+        [providerKey, providerId]
+      );
+      if (providerLink && providerLink.length > 0) {
+        await query(
+          `UPDATE customer_auth_providers
+             SET email = COALESCE(?, email),
+                 updated_at = NOW()
+           WHERE id = ?`,
+          [email || null, providerLink[0].id]
+        );
+      } else {
+        await query(
+          `INSERT INTO customer_auth_providers (customer_id, provider_type, provider_id, email, raw_profile, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
+          [customerId, providerKey, providerId, email || null, null]
+        );
+      }
+    }
+
+    // 토큰 재발급 및 refresh 저장
+    const access = generateCustomerAccessToken(customerId, providerKey);
+    const refresh = generateCustomerRefreshToken(customerId, providerKey);
+    await query(
+      `INSERT INTO customer_refresh_tokens (customer_id, token, expires_at, created_at)
+       VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY), NOW())`,
+      [customerId, refresh]
+    );
+
+    return res.json(
+      success({
+        isNewUser,
+        accessToken: access,
+        refreshToken: refresh,
+        userId: customerId,
+        customerId,
+        name: name || null,
+        email: email || null,
+        phoneNumber: phoneNumber || null,
+        profileImage: profileImage || null,
+        birthDate: birthDate || null,
+        carrier: carrier || null,
+        termsAgreed: termsAgreed ?? 0,
+        privacyAgreed: privacyAgreed ?? 0,
+        locationAgreed: locationAgreed ?? 0,
+        marketingAgreed: marketingAgreed ?? 0,
+        provider: providerKey,
+      })
+    );
+  } catch (err) {
+    console.error('[signupCustomer] error:', err);
     return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
   }
 };
@@ -212,9 +452,10 @@ export const getMe = async (req, res) => {
     }
 
     const { customerId } = verified.payload;
-    const rows = await query('SELECT id, email, name, phone_number, provider_type, profile_image_url FROM customers WHERE id = ? LIMIT 1', [
-      customerId,
-    ]);
+    const rows = await query(
+      'SELECT id, email, name, phone_number, provider_type, profile_image_url FROM customers WHERE id = ? LIMIT 1',
+      [customerId]
+    );
     if (!rows || rows.length === 0) {
       return res.status(404).json(error('USER_NOT_FOUND', '사용자를 찾을 수 없습니다'));
     }
