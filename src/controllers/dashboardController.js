@@ -1,20 +1,20 @@
 /**
- * 대시보드 컨트롤러
- * Phase 3 - 대시보드 요약 정보 API
+ * ?�?�보??컨트롤러
+ * Phase 3 - ?�?�보???�약 ?�보 API
  */
 
 import { success, error } from '../utils/response.js';
 import { query } from '../config/database.js';
 
 /**
- * 대시보드 요약 정보 조회
+ * ?�?�보???�약 ?�보 조회
  * GET /api/dashboard/summary
  */
 export const getDashboardSummary = async (req, res) => {
   try {
-    const storeId = req.storeId; // auth 미들웨어에서 설정
+    const storeId = req.storeId; // auth 미들?�어?�서 ?�정
 
-    // 1. 점포 정보 조회
+    // 1. ?�포 ?�보 조회
     const stores = await query(
       'SELECT business_name FROM stores WHERE id = ? LIMIT 1',
       [storeId]
@@ -22,13 +22,13 @@ export const getDashboardSummary = async (req, res) => {
 
     if (!stores || stores.length === 0) {
       return res.status(404).json(
-        error('STORE_NOT_FOUND', '점포를 찾을 수 없습니다')
+        error('STORE_NOT_FOUND', '?�포�?찾을 ???�습?�다')
       );
     }
 
     const storeName = stores[0].business_name;
 
-    // 2. 예약 통계 조회
+    // 2. ?�약 ?�계 조회
     const reservationStats = await query(
       `SELECT
         COUNT(*) as totalReservations,
@@ -49,7 +49,7 @@ export const getDashboardSummary = async (req, res) => {
       todayReservations = 0,
     } = reservationStats[0] || {};
 
-    // 3. 매출 통계 조회
+    // 3. 매출 ?�계 조회
     const revenueStats = await query(
       `SELECT
         COALESCE(SUM(total_amount), 0) as totalRevenue,
@@ -64,7 +64,7 @@ export const getDashboardSummary = async (req, res) => {
       todayRevenue = 0,
     } = revenueStats[0] || {};
 
-    // 4. 보관함 통계 조회
+    // 4. 보�????�계 조회
     const storageStats = await query(
       `SELECT
         COUNT(*) as totalStorages,
@@ -81,12 +81,12 @@ export const getDashboardSummary = async (req, res) => {
       occupiedStorages = 0,
     } = storageStats[0] || {};
 
-    // 점유율 계산
+    // ?�유??계산
     const occupancyRate = totalStorages > 0
       ? (occupiedStorages / totalStorages)
       : 0;
 
-    // 5. 점포 생성일/수정일 조회
+    // 5. ?�포 ?�성???�정??조회
     const storeInfo = await query(
       'SELECT created_at, updated_at FROM stores WHERE id = ? LIMIT 1',
       [storeId]
@@ -95,7 +95,7 @@ export const getDashboardSummary = async (req, res) => {
     const createdAt = storeInfo[0]?.created_at || new Date();
     const updatedAt = storeInfo[0]?.updated_at || new Date();
 
-    // 6. 응답 데이터 구성
+    // 6. ?�답 ?�이??구성
     const responseData = {
       storeName: storeName || '',
       totalReservations: Number(totalReservations),
@@ -113,18 +113,17 @@ export const getDashboardSummary = async (req, res) => {
       updatedAt: updatedAt ? (updatedAt instanceof Date ? updatedAt.toISOString() : updatedAt) : new Date().toISOString(),
     };
 
-    console.log('[getDashboardSummary] 응답 데이터:', JSON.stringify(responseData, null, 2));
 
     return res.json(
       success(
         responseData,
-        '대시보드 요약 정보 조회 성공'
+        '?�?�보???�약 ?�보 조회 ?�공'
       )
     );
   } catch (err) {
-    console.error('대시보드 요약 정보 조회 중 에러:', err);
+    console.error('?�?�보???�약 ?�보 조회 �??�러:', err);
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message,
       })
     );
@@ -132,7 +131,7 @@ export const getDashboardSummary = async (req, res) => {
 };
 
 /**
- * 대시보드 통계 조회
+ * ?�?�보???�계 조회
  * GET /api/dashboard/stats
  */
 export const getDashboardStats = async (req, res) => {
@@ -140,7 +139,7 @@ export const getDashboardStats = async (req, res) => {
     const storeId = req.storeId;
     const { period = 'monthly' } = req.query; // daily, weekly, monthly, yearly
 
-    // 기간 설정
+    // 기간 ?�정
     let dateFilter = '';
     let startDate, endDate;
 
@@ -168,7 +167,7 @@ export const getDashboardStats = async (req, res) => {
         break;
     }
 
-    // 매출 통계
+    // 매출 ?�계
     const revenueQuery = `
       SELECT
         COALESCE(SUM(total_amount), 0) as total,
@@ -182,10 +181,10 @@ export const getDashboardStats = async (req, res) => {
     const revenue = {
       total: Number(revenueResult[0]?.total || 0),
       average: Number(revenueResult[0]?.average || 0),
-      growth: 0, // TODO: 이전 기간과 비교하여 계산
+      growth: 0, // TODO: ?�전 기간�?비교?�여 계산
     };
 
-    // 예약 통계
+    // ?�약 ?�계
     const reservationQuery = `
       SELECT
         COUNT(*) as total,
@@ -207,7 +206,7 @@ export const getDashboardStats = async (req, res) => {
       completionRate: total > 0 ? Number(((completed / total) * 100).toFixed(1)) : 0,
     };
 
-    // 점유율 통계 (평균)
+    // ?�유???�계 (?�균)
     const occupancyQuery = `
       SELECT
         AVG(CASE WHEN status = 'occupied' THEN 1 ELSE 0 END) as average
@@ -218,11 +217,11 @@ export const getDashboardStats = async (req, res) => {
     const occupancyResult = await query(occupancyQuery, [storeId]);
     const occupancy = {
       average: Number(occupancyResult[0]?.average || 0).toFixed(2),
-      peak: 0.95, // TODO: 실제 최고 점유율 계산
-      peakTime: null, // TODO: 최고 점유율 시간 계산
+      peak: 0.95, // TODO: ?�제 최고 ?�유??계산
+      peakTime: null, // TODO: 최고 ?�유???�간 계산
     };
 
-    // 고객 만족도 통계
+    // 고객 만족???�계
     const reviewQuery = `
       SELECT
         COALESCE(AVG(rating), 0) as averageRating,
@@ -253,13 +252,13 @@ export const getDashboardStats = async (req, res) => {
           occupancy,
           customerSatisfaction,
         },
-        '대시보드 통계 조회 성공'
+        '?�?�보???�계 조회 ?�공'
       )
     );
   } catch (err) {
-    console.error('대시보드 통계 조회 중 에러:', err);
+    console.error('?�?�보???�계 조회 �??�러:', err);
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message,
       })
     );
@@ -267,14 +266,14 @@ export const getDashboardStats = async (req, res) => {
 };
 
 /**
- * 실시간 대시보드 데이터 조회
+ * ?�시�??�?�보???�이??조회
  * GET /api/dashboard/realtime
  */
 export const getDashboardRealtime = async (req, res) => {
   try {
     const storeId = req.storeId;
 
-    // 현재 점포 상태
+    // ?�재 ?�포 ?�태
     const statusResult = await query(
       'SELECT status FROM store_status WHERE store_id = ? LIMIT 1',
       [storeId]
@@ -282,21 +281,19 @@ export const getDashboardRealtime = async (req, res) => {
 
     const storeStatus = statusResult[0]?.status || 'closed';
 
-    // 현재 활성 예약 수
-    const activeReservations = await query(
+    // ?�재 ?�성 ?�약 ??    const activeReservations = await query(
       `SELECT COUNT(*) as count FROM reservations
        WHERE store_id = ? AND (status = 'active' OR status = 'approved')`,
       [storeId]
     );
 
-    // 대기 중인 예약 수
-    const pendingReservations = await query(
+    // ?��?중인 ?�약 ??    const pendingReservations = await query(
       `SELECT COUNT(*) as count FROM reservations
        WHERE store_id = ? AND status = 'pending'`,
       [storeId]
     );
 
-    // 오늘 매출
+    // ?�늘 매출
     const todayRevenue = await query(
       `SELECT COALESCE(SUM(total_amount), 0) as revenue
        FROM reservations
@@ -304,22 +301,19 @@ export const getDashboardRealtime = async (req, res) => {
       [storeId]
     );
 
-    // 현재 점유 보관함 수
-    const occupiedStorages = await query(
+    // ?�재 ?�유 보�?????    const occupiedStorages = await query(
       `SELECT COUNT(*) as count FROM storages
        WHERE store_id = ? AND status = 'occupied'`,
       [storeId]
     );
 
-    // 사용 가능한 보관함 수
-    const availableStorages = await query(
+    // ?�용 가?�한 보�?????    const availableStorages = await query(
       `SELECT COUNT(*) as count FROM storages
        WHERE store_id = ? AND status = 'available'`,
       [storeId]
     );
 
-    // 읽지 않은 알림 수
-    const unreadNotifications = await query(
+    // ?��? ?��? ?�림 ??    const unreadNotifications = await query(
       `SELECT COUNT(*) as count FROM notifications
        WHERE store_id = ? AND is_read = 0`,
       [storeId]
@@ -337,13 +331,13 @@ export const getDashboardRealtime = async (req, res) => {
           unreadNotifications: Number(unreadNotifications[0]?.count || 0),
           lastUpdated: new Date(),
         },
-        '실시간 대시보드 데이터 조회 성공'
+        '?�시�??�?�보???�이??조회 ?�공'
       )
     );
   } catch (err) {
-    console.error('실시간 대시보드 데이터 조회 중 에러:', err);
+    console.error('?�시�??�?�보???�이??조회 �??�러:', err);
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message,
       })
     );

@@ -1,6 +1,6 @@
 /**
- * 예약 관리 컨트롤러
- * Phase 3 - 예약 관리 APIs
+ * ?�약 관�?컨트롤러
+ * Phase 3 - ?�약 관�?APIs
  */
 
 import { success, error } from '../utils/response.js';
@@ -9,12 +9,12 @@ import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 
 /**
- * 예약 생성
+ * ?�약 ?�성
  * POST /api/reservations
  */
 export const createReservation = async (req, res) => {
   try {
-    const storeId = req.storeId || req.body.storeId; // 매장 앱이 아닌 고객 앱에서도 호출 가능
+    const storeId = req.storeId || req.body.storeId; // 매장 ?�이 ?�닌 고객 ?�에?�도 ?�출 가??
     const {
       customerName,
       phoneNumber,
@@ -31,34 +31,34 @@ export const createReservation = async (req, res) => {
       paymentMethod = 'card'
     } = req.body;
 
-    // 필수 필드 검증
+    // ?�수 ?�드 검�?
     if (!customerName || !phoneNumber || !startTime || !duration || !bagCount) {
       return res.status(400).json(
-        error('VALIDATION_ERROR', '필수 정보가 누락되었습니다', {
+        error('VALIDATION_ERROR', '?�수 ?�보가 ?�락?�었?�니??, {
           required: ['customerName', 'phoneNumber', 'startTime', 'duration', 'bagCount']
         })
       );
     }
 
-    // 매장 ID 확인
+    // 매장 ID ?�인
     if (!storeId) {
       return res.status(400).json(
-        error('VALIDATION_ERROR', '매장 ID가 필요합니다')
+        error('VALIDATION_ERROR', '매장 ID가 ?�요?�니??)
       );
     }
 
-    // 날짜를 MySQL DATETIME 형식으로 변환하는 함수
+    // ?�짜�?MySQL DATETIME ?�식?�로 변?�하???�수
     const toMySQLDateTime = (dateString) => {
       if (!dateString) return null;
       const date = new Date(dateString);
-      // MySQL DATETIME 형식: 'YYYY-MM-DD HH:MM:SS'
+      // MySQL DATETIME ?�식: 'YYYY-MM-DD HH:MM:SS'
       return date.toISOString().slice(0, 19).replace('T', ' ');
     };
 
-    // 예약 ID 생성
+    // ?�약 ID ?�성
     const reservationId = `res_${uuidv4()}`;
 
-    // 종료 시간 계산 (endTime이 없으면 startTime + duration으로 계산)
+    // 종료 ?�간 계산 (endTime???�으�?startTime + duration?�로 계산)
     let calculatedEndTime = endTime;
     if (!calculatedEndTime && startTime && duration) {
       const start = new Date(startTime);
@@ -66,10 +66,10 @@ export const createReservation = async (req, res) => {
       calculatedEndTime = start.toISOString();
     }
 
-    // 고객 ID 생성 (실제로는 고객 앱에서 전달받아야 함)
+    // 고객 ID ?�성 (?�제로는 고객 ?�에???�달받아????
     const customerId = req.customerId || req.body.customerId || `customer_${Date.now()}`;
 
-    // 예약 생성
+    // ?�약 ?�성
     await query(
       `INSERT INTO reservations (
         id, store_id, customer_id, customer_name, customer_phone, customer_email,
@@ -84,7 +84,7 @@ export const createReservation = async (req, res) => {
         customerName,
         phoneNumber,
         email || null,
-        'pending', // 초기 상태는 대기중
+        'pending', // 초기 ?�태???�기중
         toMySQLDateTime(startTime),
         toMySQLDateTime(calculatedEndTime),
         toMySQLDateTime(requestTime || new Date().toISOString()),
@@ -94,12 +94,12 @@ export const createReservation = async (req, res) => {
         message || null,
         specialRequests || null,
         luggageImageUrls ? JSON.stringify(luggageImageUrls) : null,
-        'pending', // 결제 상태
+        'pending', // 결제 ?�태
         paymentMethod
       ]
     );
 
-    // 생성된 예약 조회
+    // ?�성???�약 조회
     const [newReservation] = await query(
       `SELECT
         id, store_id as storeId, customer_id as customerId,
@@ -117,14 +117,14 @@ export const createReservation = async (req, res) => {
     return res.status(201).json(
       success({
         ...newReservation,
-        phoneNumber: newReservation.phoneNumber, // Flutter 호환성
-        price: newReservation.price // Flutter 호환성
-      }, '예약이 성공적으로 생성되었습니다')
+        phoneNumber: newReservation.phoneNumber, // Flutter ?�환??
+        price: newReservation.price // Flutter ?�환??
+      }, '?�약???�공?�으�??�성?�었?�니??)
     );
   } catch (err) {
-    console.error('예약 생성 중 에러:', err);
+    console.error('?�약 ?�성 �??�러:', err);
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message
       })
     );
@@ -132,7 +132,7 @@ export const createReservation = async (req, res) => {
 };
 
 /**
- * 예약 목록 조회
+ * ?�약 목록 조회
  * GET /api/reservations
  */
 export const getReservations = async (req, res) => {
@@ -146,7 +146,7 @@ export const getReservations = async (req, res) => {
       limit = 20,
     } = req.query;
 
-    // 필터 조건 구성
+    // ?�터 조건 구성
     const conditions = ['store_id = ?'];
     const params = [storeId];
 
@@ -167,7 +167,7 @@ export const getReservations = async (req, res) => {
 
     const whereClause = conditions.join(' AND ');
 
-    // 전체 개수 조회
+    // ?�체 개수 조회
     const countResult = await query(
       `SELECT COUNT(*) as total FROM reservations WHERE ${whereClause}`,
       params
@@ -175,10 +175,10 @@ export const getReservations = async (req, res) => {
     const totalItems = countResult[0].total;
     const totalPages = Math.ceil(totalItems / limit);
 
-    // 페이지네이션 계산
+    // ?�이지?�이??계산
     const offset = (page - 1) * limit;
 
-    // 예약 목록 조회
+    // ?�약 목록 조회
     const reservations = await query(
       `SELECT
         r.id, r.store_id as storeId, r.customer_id as customerId,
@@ -200,9 +200,9 @@ export const getReservations = async (req, res) => {
       [...params, Number(limit), offset]
     );
 
-    // 응답 데이터 구성
+    // ?�답 ?�이??구성
     const formattedReservations = reservations.map(reservation => {
-      // luggage_image_urls JSON 파싱
+      // luggage_image_urls JSON ?�싱
       let luggageImageUrls = [];
       if (reservation.luggageImageUrls) {
         try {
@@ -210,19 +210,19 @@ export const getReservations = async (req, res) => {
             ? JSON.parse(reservation.luggageImageUrls)
             : reservation.luggageImageUrls;
         } catch (e) {
-          console.error('[getReservations] luggage_image_urls 파싱 실패:', e);
+          console.error('[getReservations] luggage_image_urls ?�싱 ?�패:', e);
         }
       }
 
       return {
         id: reservation.id,
         customerName: reservation.customerName,
-        phoneNumber: reservation.customerPhone, // Flutter 앱: phoneNumber
+        phoneNumber: reservation.customerPhone, // Flutter ?? phoneNumber
         email: reservation.customerEmail,
         requestTime: reservation.requestTime,
         startTime: reservation.startTime,
         duration: reservation.duration,
-        price: reservation.totalAmount, // Flutter 앱: price
+        price: reservation.totalAmount, // Flutter ?? price
         bagCount: reservation.bagCount,
         message: reservation.message || '',
         specialRequests: reservation.specialRequests,
@@ -244,13 +244,13 @@ export const getReservations = async (req, res) => {
             itemsPerPage: Number(limit),
           },
         },
-        '예약 목록 조회 성공'
+        '?�약 목록 조회 ?�공'
       )
     );
   } catch (err) {
-    console.error('예약 목록 조회 중 에러:', err);
+    console.error('?�약 목록 조회 �??�러:', err);
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message,
       })
     );
@@ -258,7 +258,7 @@ export const getReservations = async (req, res) => {
 };
 
 /**
- * 예약 단일 조회
+ * ?�약 ?�일 조회
  * GET /api/reservations/:id
  */
 export const getReservation = async (req, res) => {
@@ -290,13 +290,13 @@ export const getReservation = async (req, res) => {
 
     if (!reservations || reservations.length === 0) {
       return res.status(404).json(
-        error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다')
+        error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다')
       );
     }
 
     const reservation = reservations[0];
 
-    // luggage_image_urls JSON 파싱
+    // luggage_image_urls JSON ?�싱
     let luggageImageUrls = [];
     if (reservation.luggageImageUrls) {
       try {
@@ -304,19 +304,19 @@ export const getReservation = async (req, res) => {
           ? JSON.parse(reservation.luggageImageUrls)
           : reservation.luggageImageUrls;
       } catch (e) {
-        console.error('[getReservation] luggage_image_urls 파싱 실패:', e);
+        console.error('[getReservation] luggage_image_urls ?�싱 ?�패:', e);
       }
     }
 
     const result = {
       id: reservation.id,
       customerName: reservation.customerName,
-      phoneNumber: reservation.customerPhone, // Flutter 앱: phoneNumber
+      phoneNumber: reservation.customerPhone, // Flutter ?? phoneNumber
       email: reservation.customerEmail,
       requestTime: reservation.requestTime,
       startTime: reservation.startTime,
       duration: reservation.duration,
-      price: reservation.totalAmount, // Flutter 앱: price
+      price: reservation.totalAmount, // Flutter ?? price
       bagCount: reservation.bagCount,
       message: reservation.message || '',
       specialRequests: reservation.specialRequests,
@@ -326,11 +326,11 @@ export const getReservation = async (req, res) => {
       updatedAt: reservation.updatedAt,
     };
 
-    return res.json(success(result, '예약 조회 성공'));
+    return res.json(success(result, '?�약 조회 ?�공'));
   } catch (err) {
-    console.error('예약 조회 중 에러:', err);
+    console.error('?�약 조회 �??�러:', err);
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message,
       })
     );
@@ -338,7 +338,7 @@ export const getReservation = async (req, res) => {
 };
 
 /**
- * 예약 승인
+ * ?�약 ?�인
  * PUT /api/reservations/:id/approve
  */
 export const approveReservation = async (req, res) => {
@@ -347,7 +347,7 @@ export const approveReservation = async (req, res) => {
     const { id } = req.params;
     const { storageId, storageNumber } = req.body;
 
-    // 예약 존재 및 상태 확인
+    // ?�약 존재 �??�태 ?�인
     const reservations = await query(
       'SELECT status FROM reservations WHERE id = ? AND store_id = ? LIMIT 1',
       [id, storeId]
@@ -355,20 +355,20 @@ export const approveReservation = async (req, res) => {
 
     if (!reservations || reservations.length === 0) {
       return res.status(404).json(
-        error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다')
+        error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다')
       );
     }
 
-    // pending 또는 pending_approval 상태만 승인 가능
+    // pending ?�는 pending_approval ?�태�??�인 가??
     if (reservations[0].status !== 'pending' && reservations[0].status !== 'pending_approval') {
       return res.status(400).json(
-        error('INVALID_STATUS', '승인 가능한 상태가 아닙니다', {
+        error('INVALID_STATUS', '?�인 가?�한 ?�태가 ?�닙?�다', {
           currentStatus: reservations[0].status,
         })
       );
     }
 
-    // 보관함이 지정된 경우 상태 확인 및 업데이트
+    // 보�??�이 지?�된 경우 ?�태 ?�인 �??�데?�트
     if (storageId) {
       const storages = await query(
         'SELECT status FROM storages WHERE id = ? AND store_id = ? LIMIT 1',
@@ -377,26 +377,26 @@ export const approveReservation = async (req, res) => {
 
       if (!storages || storages.length === 0) {
         return res.status(404).json(
-          error('STORAGE_NOT_FOUND', '보관함을 찾을 수 없습니다')
+          error('STORAGE_NOT_FOUND', '보�??�을 찾을 ???�습?�다')
         );
       }
 
       if (storages[0].status !== 'available') {
         return res.status(400).json(
-          error('STORAGE_NOT_AVAILABLE', '사용 가능한 보관함이 아닙니다', {
+          error('STORAGE_NOT_AVAILABLE', '?�용 가?�한 보�??�이 ?�닙?�다', {
             currentStatus: storages[0].status,
           })
         );
       }
 
-      // 보관함 상태를 occupied로 변경
+      // 보�????�태�?occupied�?변�?
       await query(
         'UPDATE storages SET status = \'occupied\', updated_at = NOW() WHERE id = ? AND store_id = ?',
         [storageId, storeId]
       );
     }
 
-    // 예약 상태를 confirmed로 변경
+    // ?�약 ?�태�?confirmed�?변�?
     await query(
       `UPDATE reservations
        SET status = 'confirmed', storage_id = ?, storage_number = ?, updated_at = NOW()
@@ -404,7 +404,7 @@ export const approveReservation = async (req, res) => {
       [storageId || null, storageNumber || null, id, storeId]
     );
 
-    // 업데이트된 예약 조회
+    // ?�데?�트???�약 조회
     const updatedReservations = await query(
       `SELECT
         id, store_id as storeId, customer_name as customerName,
@@ -416,11 +416,11 @@ export const approveReservation = async (req, res) => {
       [id]
     );
 
-    return res.json(success(updatedReservations[0], '예약 승인 성공'));
+    return res.json(success(updatedReservations[0], '?�약 ?�인 ?�공'));
   } catch (err) {
-    console.error('예약 승인 중 에러:', err);
+    console.error('?�약 ?�인 �??�러:', err);
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message,
       })
     );
@@ -428,7 +428,7 @@ export const approveReservation = async (req, res) => {
 };
 
 /**
- * 예약 거부 (자동 환불 포함)
+ * ?�약 거�? (?�동 ?�불 ?�함)
  * PUT /api/reservations/:id/reject
  */
 export const rejectReservation = async (req, res) => {
@@ -441,7 +441,7 @@ export const rejectReservation = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 1. 예약 정보 조회 (FOR UPDATE로 락 걸기)
+    // 1. ?�약 ?�보 조회 (FOR UPDATE�???걸기)
     const [reservations] = await connection.query(
       'SELECT * FROM reservations WHERE id = ? AND store_id = ? FOR UPDATE',
       [id, storeId]
@@ -450,23 +450,23 @@ export const rejectReservation = async (req, res) => {
     if (!reservations || reservations.length === 0) {
       await connection.rollback();
       return res.status(404).json(
-        error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다')
+        error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다')
       );
     }
 
     const reservation = reservations[0];
 
-    // 2. 이미 처리된 예약인지 확인
+    // 2. ?��? 처리???�약?��? ?�인
     if (reservation.status !== 'pending' && reservation.status !== 'pending_approval') {
       await connection.rollback();
       return res.status(400).json(
-        error('INVALID_STATUS', '거부할 수 없는 예약 상태입니다', {
+        error('INVALID_STATUS', '거�??????�는 ?�약 ?�태?�니??, {
           currentStatus: reservation.status,
         })
       );
     }
 
-    // 3. 결제 정보 조회
+    // 3. 결제 ?�보 조회
     const [payments] = await connection.query(
       'SELECT * FROM payments WHERE reservation_id = ? AND status = "SUCCESS"',
       [id]
@@ -475,17 +475,17 @@ export const rejectReservation = async (req, res) => {
     let refundResult = null;
     const payment = payments && payments.length > 0 ? payments[0] : null;
 
-    // 4. 결제가 완료된 경우 자동 환불
+    // 4. 결제가 ?�료??경우 ?�동 ?�불
     if (payment) {
       const secretKey = process.env.TOSS_SECRET_KEY;
       const encodedKey = Buffer.from(secretKey + ':').toString('base64');
 
       try {
-        // 토스페이먼츠 환불 API 호출
+        // ?�스?�이먼츠 ?�불 API ?�출
         const tossResponse = await axios.post(
           `https://api.tosspayments.com/v1/payments/${payment.pg_payment_key}/cancel`,
           {
-            cancelReason: reason || '가게 사정으로 예약 거부',
+            cancelReason: reason || '가�??�정?�로 ?�약 거�?',
           },
           {
             headers: {
@@ -497,7 +497,7 @@ export const rejectReservation = async (req, res) => {
 
         refundResult = tossResponse.data;
 
-        // 결제 상태 업데이트
+        // 결제 ?�태 ?�데?�트
         await connection.query(
           `UPDATE payments
            SET status = 'CANCELED',
@@ -507,21 +507,20 @@ export const rejectReservation = async (req, res) => {
           [payment.id]
         );
 
-        console.log(`✅ 자동 환불 완료: ${payment.pg_payment_key}`);
 
       } catch (refundError) {
-        console.error('환불 실패:', refundError);
+        console.error('?�불 ?�패:', refundError);
         await connection.rollback();
         
         return res.status(500).json(
-          error('REFUND_FAILED', '환불 처리 중 오류가 발생했습니다', {
+          error('REFUND_FAILED', '?�불 처리 �??�류가 발생?�습?�다', {
             detail: refundError.response?.data || refundError.message,
           })
         );
       }
     }
 
-    // 5. 예약 상태 업데이트
+    // 5. ?�약 ?�태 ?�데?�트
     await connection.query(
       `UPDATE reservations
        SET status = 'rejected',
@@ -531,14 +530,14 @@ export const rejectReservation = async (req, res) => {
        WHERE id = ?`,
       [
         payment ? 'refunded' : reservation.payment_status,
-        reason || '점포 사정으로 예약이 거부되었습니다',
+        reason || '?�포 ?�정?�로 ?�약??거�??�었?�니??,
         id,
       ]
     );
 
     await connection.commit();
 
-    // 6. 업데이트된 예약 조회
+    // 6. ?�데?�트???�약 조회
     const [updatedReservations] = await connection.query(
       `SELECT
         id, store_id as storeId, customer_name as customerName,
@@ -555,15 +554,15 @@ export const rejectReservation = async (req, res) => {
         refunded: !!payment,
         refund_amount: payment?.amount_total,
         refund_data: refundResult,
-      }, '예약 거부 및 환불 처리 완료')
+      }, '?�약 거�? �??�불 처리 ?�료')
     );
 
   } catch (err) {
     await connection.rollback();
-    console.error('예약 거부 중 에러:', err);
+    console.error('?�약 거�? �??�러:', err);
     
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message,
       })
     );
@@ -573,9 +572,9 @@ export const rejectReservation = async (req, res) => {
 };
 
 /**
- * 예약 취소 (자동 환불 포함)
+ * ?�약 취소 (?�동 ?�불 ?�함)
  * PUT /api/reservations/:id/cancel
- * 가게에서 자동 승인된 예약을 취소할 때 사용
+ * 가게에???�동 ?�인???�약??취소?????�용
  */
 export const cancelReservation = async (req, res) => {
   const connection = await pool.getConnection();
@@ -587,7 +586,7 @@ export const cancelReservation = async (req, res) => {
 
     await connection.beginTransaction();
 
-    // 1. 예약 정보 조회 (FOR UPDATE로 락 걸기)
+    // 1. ?�약 ?�보 조회 (FOR UPDATE�???걸기)
     const [reservations] = await connection.query(
       'SELECT * FROM reservations WHERE id = ? AND store_id = ? FOR UPDATE',
       [id, storeId]
@@ -596,28 +595,28 @@ export const cancelReservation = async (req, res) => {
     if (!reservations || reservations.length === 0) {
       await connection.rollback();
       return res.status(404).json(
-        error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다')
+        error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다')
       );
     }
 
     const reservation = reservations[0];
 
-    // 2. 상태 검증
+    // 2. ?�태 검�?
     if (reservation.status === 'cancelled') {
       await connection.rollback();
       return res.status(400).json(
-        error('ALREADY_CANCELLED', '이미 취소된 예약입니다')
+        error('ALREADY_CANCELLED', '?��? 취소???�약?�니??)
       );
     }
 
     if (reservation.status === 'completed') {
       await connection.rollback();
       return res.status(400).json(
-        error('CANNOT_CANCEL_COMPLETED', '완료된 예약은 취소할 수 없습니다')
+        error('CANNOT_CANCEL_COMPLETED', '?�료???�약?� 취소?????�습?�다')
       );
     }
 
-    // 3. 결제 정보 조회
+    // 3. 결제 ?�보 조회
     const [payments] = await connection.query(
       'SELECT * FROM payments WHERE reservation_id = ? AND status = "SUCCESS"',
       [id]
@@ -626,17 +625,17 @@ export const cancelReservation = async (req, res) => {
     let refundResult = null;
     const payment = payments && payments.length > 0 ? payments[0] : null;
 
-    // 4. 결제가 완료된 경우 자동 환불
+    // 4. 결제가 ?�료??경우 ?�동 ?�불
     if (payment) {
       const secretKey = process.env.TOSS_SECRET_KEY;
       const encodedKey = Buffer.from(secretKey + ':').toString('base64');
 
       try {
-        // 토스페이먼츠 환불 API 호출
+        // ?�스?�이먼츠 ?�불 API ?�출
         const tossResponse = await axios.post(
           `https://api.tosspayments.com/v1/payments/${payment.pg_payment_key}/cancel`,
           {
-            cancelReason: reason || '가게 사정으로 예약 취소',
+            cancelReason: reason || '가�??�정?�로 ?�약 취소',
           },
           {
             headers: {
@@ -648,7 +647,7 @@ export const cancelReservation = async (req, res) => {
 
         refundResult = tossResponse.data;
 
-        // 결제 상태 업데이트
+        // 결제 ?�태 ?�데?�트
         await connection.query(
           `UPDATE payments
            SET status = 'CANCELED',
@@ -658,21 +657,20 @@ export const cancelReservation = async (req, res) => {
           [payment.id]
         );
 
-        console.log(`✅ 자동 환불 완료: ${payment.pg_payment_key}`);
 
       } catch (refundError) {
-        console.error('환불 실패:', refundError);
+        console.error('?�불 ?�패:', refundError);
         await connection.rollback();
         
         return res.status(500).json(
-          error('REFUND_FAILED', '환불 처리 중 오류가 발생했습니다', {
+          error('REFUND_FAILED', '?�불 처리 �??�류가 발생?�습?�다', {
             detail: refundError.response?.data || refundError.message,
           })
         );
       }
     }
 
-    // 5. 보관함이 할당된 경우 상태를 available로 변경
+    // 5. 보�??�이 ?�당??경우 ?�태�?available�?변�?
     if (reservation.storage_id) {
       await connection.query(
         'UPDATE storages SET status = \'available\', updated_at = NOW() WHERE id = ? AND store_id = ?',
@@ -680,7 +678,7 @@ export const cancelReservation = async (req, res) => {
       );
     }
 
-    // 6. 예약 상태 업데이트
+    // 6. ?�약 ?�태 ?�데?�트
     await connection.query(
       `UPDATE reservations
        SET status = 'cancelled',
@@ -690,14 +688,14 @@ export const cancelReservation = async (req, res) => {
        WHERE id = ?`,
       [
         payment ? 'refunded' : reservation.payment_status,
-        reason || '가게 사정으로 예약 취소',
+        reason || '가�??�정?�로 ?�약 취소',
         id,
       ]
     );
 
     await connection.commit();
 
-    // 7. 업데이트된 예약 조회
+    // 7. ?�데?�트???�약 조회
     const [updatedReservations] = await connection.query(
       `SELECT
         id, store_id as storeId, customer_name as customerName,
@@ -714,15 +712,15 @@ export const cancelReservation = async (req, res) => {
         refunded: !!payment,
         refund_amount: payment?.amount_total,
         refund_data: refundResult,
-      }, '예약 취소 및 환불 처리 완료')
+      }, '?�약 취소 �??�불 처리 ?�료')
     );
 
   } catch (err) {
     await connection.rollback();
-    console.error('예약 취소 중 에러:', err);
+    console.error('?�약 취소 �??�러:', err);
     
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message,
       })
     );
@@ -732,7 +730,7 @@ export const cancelReservation = async (req, res) => {
 };
 
 /**
- * 예약 상태 변경
+ * ?�약 ?�태 변�?
  * PUT /api/reservations/:id/status
  */
 export const updateReservationStatus = async (req, res) => {
@@ -741,20 +739,20 @@ export const updateReservationStatus = async (req, res) => {
     const { id } = req.params;
     const { status: newStatus } = req.body;
 
-    // 상태값 검증
+    // ?�태�?검�?
     const validStatuses = ['pending', 'confirmed', 'rejected', 'in_progress', 'completed', 'cancelled'];
     if (!newStatus || !validStatuses.includes(newStatus)) {
       return res.status(400).json(
-        error('VALIDATION_ERROR', '유효한 상태값이 필요합니다', {
+        error('VALIDATION_ERROR', '?�효???�태값이 ?�요?�니??, {
           validStatuses,
         })
       );
     }
 
-    // 예약 존재 확인
+    // ?�약 존재 ?�인
     if (!storeId) {
       return res.status(400).json(
-        error('VALIDATION_ERROR', 'storeId가 필요합니다')
+        error('VALIDATION_ERROR', 'storeId가 ?�요?�니??)
       );
     }
 
@@ -765,22 +763,22 @@ export const updateReservationStatus = async (req, res) => {
 
     if (!reservations || reservations.length === 0) {
       return res.status(404).json(
-        error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다')
+        error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다')
       );
     }
 
     const currentStatus = reservations[0].status;
     const storageId = reservations[0].storage_id;
 
-    // 상태 전환 로직 처리
+    // ?�태 ?�환 로직 처리
     if (newStatus === 'in_progress' && currentStatus === 'confirmed') {
-      // 예약 시작 - actual_start_time 설정
+      // ?�약 ?�작 - actual_start_time ?�정
       await query(
         'UPDATE reservations SET status = ?, actual_start_time = NOW(), updated_at = NOW() WHERE id = ? AND store_id = ?',
         [newStatus, id, storeId]
       );
     } else if (newStatus === 'completed' && (currentStatus === 'in_progress' || currentStatus === 'confirmed')) {
-      // 예약 완료 - actual_end_time 설정, 보관함 상태를 available로 변경
+      // ?�약 ?�료 - actual_end_time ?�정, 보�????�태�?available�?변�?
       await query(
         'UPDATE reservations SET status = ?, actual_end_time = NOW(), updated_at = NOW() WHERE id = ? AND store_id = ?',
         [newStatus, id, storeId]
@@ -793,14 +791,14 @@ export const updateReservationStatus = async (req, res) => {
         );
       }
     } else {
-      // 일반적인 상태 변경
+      // ?�반?�인 ?�태 변�?
       await query(
         'UPDATE reservations SET status = ?, updated_at = NOW() WHERE id = ? AND store_id = ?',
         [newStatus, id, storeId]
       );
     }
 
-    // 업데이트된 예약 조회
+    // ?�데?�트???�약 조회
     const updatedReservations = await query(
       `SELECT
         id, store_id as storeId, customer_name as customerName,
@@ -812,11 +810,11 @@ export const updateReservationStatus = async (req, res) => {
       [id]
     );
 
-    return res.json(success(updatedReservations[0], '예약 상태 변경 성공'));
+    return res.json(success(updatedReservations[0], '?�약 ?�태 변�??�공'));
   } catch (err) {
-    console.error('예약 상태 변경 중 에러:', err);
+    console.error('?�약 ?�태 변�?�??�러:', err);
     return res.status(500).json(
-      error('INTERNAL_ERROR', '서버 오류가 발생했습니다', {
+      error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', {
         message: err.message,
       })
     );

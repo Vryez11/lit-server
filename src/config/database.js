@@ -1,5 +1,5 @@
 /**
- * MySQL 데이터베이스 연결 설정
+ * MySQL ?�이?�베?�스 ?�결 ?�정
  */
 
 import mysql from 'mysql2/promise';
@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// 데이터베이스 연결 풀 생성
+// ?�이?�베?�스 ?�결 ?� ?�성
 export const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT) || 3306,
@@ -20,11 +20,11 @@ export const pool = mysql.createPool({
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
   charset: 'utf8mb4',
-  timezone: '+09:00', // 한국 시간대
+  timezone: '+09:00', // ?�국 ?�간?�
 });
 
 /**
- * 연결 풀에서 연결 가져오기
+ * ?�결 ?�?�서 ?�결 가?�오�?
  * @returns {Promise<PoolConnection>}
  */
 export const getConnection = async () => {
@@ -32,15 +32,15 @@ export const getConnection = async () => {
     const connection = await pool.getConnection();
     return connection;
   } catch (error) {
-    console.error('데이터베이스 연결 실패:', error);
+    console.error('?�이?�베?�스 ?�결 ?�패:', error);
     throw error;
   }
 };
 
 /**
- * 쿼리 실행
+ * 쿼리 ?�행
  * @param {string} sql - SQL 쿼리
- * @param {Array} params - 쿼리 파라미터
+ * @param {Array} params - 쿼리 ?�라미터
  * @returns {Promise<Array>}
  */
 export const query = async (sql, params = []) => {
@@ -48,14 +48,14 @@ export const query = async (sql, params = []) => {
     const [rows] = await pool.query(sql, params);
     return rows;
   } catch (error) {
-    console.error('쿼리 실행 실패:', error);
+    console.error('쿼리 ?�행 ?�패:', error);
     throw error;
   }
 };
 
 /**
- * 트랜잭션 시작
- * @param {Function} callback - 트랜잭션 내에서 실행할 콜백
+ * ?�랜??�� ?�작
+ * @param {Function} callback - ?�랜??�� ?�에???�행??콜백
  * @returns {Promise<any>}
  */
 export const transaction = async (callback) => {
@@ -74,33 +74,30 @@ export const transaction = async (callback) => {
 };
 
 /**
- * 연결 풀 종료
+ * ?�결 ?� 종료
  * @returns {Promise<void>}
  */
 let isPoolClosed = false;
 
 export const closePool = async () => {
   if (isPoolClosed) {
-    console.log('⚠️  연결 풀이 이미 종료되었습니다.');
     return;
   }
 
   try {
     isPoolClosed = true;
     await pool.end();
-    console.log('✅ 데이터베이스 연결 풀 종료됨');
   } catch (error) {
-    // 이미 닫힌 경우 에러를 무시
+    // ?��? ?�힌 경우 ?�러�?무시
     if (error.message && error.message.includes('closed state')) {
-      console.log('⚠️  연결 풀이 이미 종료되었습니다.');
       return;
     }
-    console.error('❌ 연결 풀 종료 실패:', error.message);
+    console.error('???�결 ?� 종료 ?�패:', error.message);
   }
 };
 
 /**
- * 데이터베이스 연결 테스트
+ * ?�이?�베?�스 ?�결 ?�스??
  * @returns {Promise<boolean>}
  */
 export const testConnection = async () => {
@@ -108,15 +105,14 @@ export const testConnection = async () => {
     const connection = await getConnection();
     const [rows] = await connection.query('SELECT 1');
     connection.release();
-    console.log('✅ 데이터베이스 연결 성공');
     return true;
   } catch (error) {
-    console.error('❌ 데이터베이스 연결 실패:', error.message);
+    console.error('???�이?�베?�스 ?�결 ?�패:', error.message);
     return false;
   }
 };
 
-// NOTE: 프로세스 종료 시 연결 풀 정리는 server.js에서 처리합니다.
-// 여기서 처리하면 중복 호출로 인한 에러가 발생할 수 있습니다.
+// NOTE: ?�로?�스 종료 ???�결 ?� ?�리??server.js?�서 처리?�니??
+// ?�기??처리?�면 중복 ?�출�??�한 ?�러가 발생?????�습?�다.
 
 export default pool;

@@ -33,7 +33,7 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// 요청 로깅 미들웨어 (개발 환경)
+// 요청 로깅 미들웨어 (개발/스테이징용)
 if (process.env.NODE_ENV !== 'test') {
   app.use((req, res, next) => {
     const timestamp = new Date().toISOString();

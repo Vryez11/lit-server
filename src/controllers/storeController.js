@@ -562,8 +562,6 @@ export const updateStoreSettings = async (req, res) => {
       categories,
   } = req.body;
 
-  console.log('[updateStoreSettings] 요청 데이터:', JSON.stringify(req.body, null, 2));
-
   // 기본 정보에서 매장 소개(description) 추출
   const descriptionFromBasicInfo = basicInfo?.description;
 

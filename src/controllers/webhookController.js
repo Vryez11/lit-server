@@ -1,31 +1,30 @@
 /**
- * 웹훅 컨트롤러
- * 토스페이먼츠 웹훅 전용
+ * ?�훅 컨트롤러
+ * ?�스?�이먼츠 ?�훅 ?�용
  */
 
 import { processWebhook } from '../services/webhookService.js';
 
 /**
- * 토스페이먼츠 웹훅 처리
+ * ?�스?�이먼츠 ?�훅 처리
  * POST /api/webhooks/toss
  */
 export const handleTossWebhook = async (req, res) => {
   try {
     const webhookData = req.body;
 
-    console.log('📨 웹훅 수신:', JSON.stringify(webhookData, null, 2));
 
-    // 웹훅 처리
+    // ?�훅 처리
     const result = await processWebhook(webhookData);
 
-    // 웹훅은 항상 200 OK 반환 (PG사 재시도 방지)
+    // ?�훅?� ??�� 200 OK 반환 (PG???�시??방�?)
     return res.status(200).json(result);
 
   } catch (err) {
-    console.error('❌ 웹훅 처리 실패:', err);
+    console.error('???�훅 처리 ?�패:', err);
 
-    // 웹훅은 실패해도 200 반환 (무한 재시도 방지)
-    // 단, 로그는 반드시 남겨서 수동 처리 가능하게
+    // ?�훅?� ?�패?�도 200 반환 (무한 ?�시??방�?)
+    // ?? 로그??반드???�겨???�동 처리 가?�하�?
     return res.status(200).json({
       success: false,
       message: 'Webhook processing failed',

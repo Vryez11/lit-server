@@ -1,12 +1,12 @@
 /**
- * 웹훅 서비스
- * 토스페이먼츠 웹훅 처리 비즈니스 로직
+ * ?�훅 ?�비??
+ * ?�스?�이먼츠 ?�훅 처리 비즈?�스 로직
  */
 
 import { pool } from '../config/database.js';
 
 /**
- * 토스 상태를 우리 시스템 상태로 매핑
+ * ?�스 ?�태�??�리 ?�스???�태�?매핑
  */
 export function mapTossStatusToOurStatus(tossStatus) {
   const statusMap = {
@@ -24,7 +24,7 @@ export function mapTossStatusToOurStatus(tossStatus) {
 }
 
 /**
- * 상태 전이 검증
+ * ?�태 ?�이 검�?
  */
 export function isValidStatusTransition(currentStatus, newStatus) {
   const validTransitions = {
@@ -39,7 +39,7 @@ export function isValidStatusTransition(currentStatus, newStatus) {
 }
 
 /**
- * 웹훅 멱등성 체크
+ * ?�훅 멱등??체크
  */
 export async function checkWebhookIdempotency(connection, orderId, eventType, status) {
   const [existingWebhooks] = await connection.query(
@@ -55,7 +55,7 @@ export async function checkWebhookIdempotency(connection, orderId, eventType, st
 }
 
 /**
- * 웹훅 이력 저장
+ * ?�훅 ?�력 ?�??
  */
 export async function saveWebhookHistory(connection, webhookData) {
   const {
@@ -95,7 +95,7 @@ export async function saveWebhookHistory(connection, webhookData) {
 }
 
 /**
- * 결제 상태 변경 처리
+ * 결제 ?�태 변�?처리
  */
 export async function handlePaymentStatusChanged(connection, payment, data) {
   const { paymentKey, status, approvedAt, totalAmount, method } = data;
@@ -103,7 +103,7 @@ export async function handlePaymentStatusChanged(connection, payment, data) {
   const ourStatus = mapTossStatusToOurStatus(status);
 
   if (ourStatus === 'SUCCESS') {
-    // 결제 성공
+    // 결제 ?�공
     await connection.query(
       `UPDATE payments
        SET status = ?,
@@ -123,7 +123,7 @@ export async function handlePaymentStatusChanged(connection, payment, data) {
       ]
     );
 
-    // 연결된 예약이 있으면 예약 상태도 업데이트 (가게 승인 대기)
+    // ?�결???�약???�으�??�약 ?�태???�데?�트 (가�??�인 ?��?
     if (payment.reservation_id) {
       await connection.query(
         `UPDATE reservations
@@ -134,13 +134,11 @@ export async function handlePaymentStatusChanged(connection, payment, data) {
         [payment.reservation_id]
       );
 
-      console.log(`✅ 결제 완료, 가게 승인 대기: ${payment.reservation_id}`);
     }
 
-    console.log(`✅ 결제 성공 처리 완료: ${payment.pg_order_id}`);
 
   } else if (ourStatus === 'FAILED') {
-    // 결제 실패
+    // 결제 ?�패
     await connection.query(
       `UPDATE payments
        SET status = ?,
@@ -149,7 +147,7 @@ export async function handlePaymentStatusChanged(connection, payment, data) {
       [ourStatus, payment.id]
     );
 
-    // 예약도 실패 처리
+    // ?�약???�패 처리
     if (payment.reservation_id) {
       await connection.query(
         `UPDATE reservations
@@ -160,7 +158,6 @@ export async function handlePaymentStatusChanged(connection, payment, data) {
       );
     }
 
-    console.log(`❌ 결제 실패 처리 완료: ${payment.pg_order_id}`);
   }
 }
 
@@ -180,7 +177,7 @@ export async function handlePaymentCanceled(connection, payment, data) {
     [payment.id]
   );
 
-  // 2. 예약도 취소 처리
+  // 2. ?�약??취소 처리
   if (payment.reservation_id) {
     await connection.query(
       `UPDATE reservations
@@ -191,14 +188,12 @@ export async function handlePaymentCanceled(connection, payment, data) {
       [payment.reservation_id]
     );
 
-    console.log(`🔄 예약 취소 완료: ${payment.reservation_id}`);
   }
 
-  console.log(`🔄 결제 취소 처리 완료: ${payment.pg_order_id}`);
 }
 
 /**
- * 웹훅 처리 메인 로직
+ * ?�훅 처리 메인 로직
  */
 export async function processWebhook(webhookData) {
   let connection;
@@ -218,28 +213,28 @@ export async function processWebhook(webhookData) {
       } = {},
     } = webhookData;
 
-    // 1. 필수 필드 검증
+    // 1. ?�수 ?�드 검�?
     if (!eventType || !orderId) {
-      throw new Error('웹훅 필수 필드 누락');
+      throw new Error('?�훅 ?�수 ?�드 ?�락');
     }
 
-    // 2. 트랜잭션 시작
+    // 2. ?�랜??�� ?�작
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // 3. 기존 결제 정보 조회 (FOR UPDATE로 락 걸기)
+    // 3. 기존 결제 ?�보 조회 (FOR UPDATE�???걸기)
     const [payments] = await connection.query(
       'SELECT * FROM payments WHERE pg_order_id = ? FOR UPDATE',
       [orderId]
     );
 
     if (payments.length === 0) {
-      throw new Error(`존재하지 않는 주문: ${orderId}`);
+      throw new Error(`존재?��? ?�는 주문: ${orderId}`);
     }
 
     const payment = payments[0];
 
-    // 4. 멱등성 체크
+    // 4. 멱등??체크
     const isAlreadyProcessed = await checkWebhookIdempotency(
       connection,
       orderId,
@@ -248,12 +243,11 @@ export async function processWebhook(webhookData) {
     );
 
     if (isAlreadyProcessed) {
-      console.log(`⏭️  이미 처리된 웹훅: ${orderId}, ${eventType}, ${status}`);
       await connection.commit();
       return { success: true, message: 'Already processed (idempotent)' };
     }
 
-    // 5. 웹훅 이력 저장
+    // 5. ?�훅 ?�력 ?�??
     await saveWebhookHistory(connection, {
       paymentId: payment.id,
       orderId,
@@ -263,17 +257,17 @@ export async function processWebhook(webhookData) {
       rawData: webhookData,
     });
 
-    // 6. 상태 전이 검증
+    // 6. ?�태 ?�이 검�?
     const currentStatus = payment.status;
     const newStatus = mapTossStatusToOurStatus(status);
 
     if (!isValidStatusTransition(currentStatus, newStatus)) {
-      console.warn(`⚠️  잘못된 상태 전이: ${currentStatus} -> ${newStatus}`);
+      console.warn(`?�️  ?�못???�태 ?�이: ${currentStatus} -> ${newStatus}`);
       await connection.commit();
       return { success: false, message: 'Invalid status transition' };
     }
 
-    // 7. 이벤트 타입별 처리
+    // 7. ?�벤???�?�별 처리
     switch (eventType) {
       case 'PAYMENT_STATUS_CHANGED':
         await handlePaymentStatusChanged(connection, payment, {
@@ -293,16 +287,15 @@ export async function processWebhook(webhookData) {
         break;
 
       default:
-        console.log(`ℹ️  처리하지 않는 이벤트 타입: ${eventType}`);
     }
 
-    // 8. 트랜잭션 커밋
+    // 8. ?�랜??�� 커밋
     await connection.commit();
 
     return { success: true, message: 'Webhook processed successfully' };
 
   } catch (err) {
-    console.error('❌ 웹훅 처리 실패:', err);
+    console.error('???�훅 처리 ?�패:', err);
     
     if (connection) {
       await connection.rollback();
