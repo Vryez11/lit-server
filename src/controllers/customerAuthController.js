@@ -86,6 +86,11 @@ export const socialLogin = async (req, res) => {
     const providerKey = provider.toLowerCase();
     const providerId = socialId; // 고정 식별자 사용 (access token 해시 미사용)
 
+    const toBit = (val, fallback = 0) => {
+      if (val === undefined || val === null) return fallback;
+      return val ? 1 : 0;
+    };
+
     const existing = await query(
       'SELECT * FROM customers WHERE provider_type = ? AND provider_id = ? LIMIT 1',
       [providerKey, providerId]
@@ -119,10 +124,10 @@ export const socialLogin = async (req, res) => {
           carrier || null,
           gender || null,
           profileImage || null,
-          termsAgreed ?? null,
-          privacyAgreed ?? null,
-          locationAgreed ?? null,
-          marketingAgreed ?? null,
+          toBit(termsAgreed),
+          toBit(privacyAgreed, 0),
+          toBit(locationAgreed, 0),
+          toBit(marketingAgreed, 0),
           customerId,
         ]
       );
@@ -143,10 +148,10 @@ export const socialLogin = async (req, res) => {
           carrier || null,
           gender || null,
           profileImage || null,
-          termsAgreed ?? 0,
-          privacyAgreed ?? 0,
-          locationAgreed ?? 0,
-          marketingAgreed ?? 0,
+          toBit(termsAgreed),
+          toBit(privacyAgreed, 0),
+          toBit(locationAgreed, 0),
+          toBit(marketingAgreed, 0),
         ]
       );
     }
@@ -197,10 +202,10 @@ export const socialLogin = async (req, res) => {
         birthDate: birthDate || existing?.[0]?.birth_date || null,
         carrier: carrier || existing?.[0]?.carrier || null,
         gender: gender || existing?.[0]?.gender || null,
-        termsAgreed: termsAgreed ?? existing?.[0]?.terms_agreed ?? 0,
-        privacyAgreed: privacyAgreed ?? existing?.[0]?.privacy_agreed ?? 0,
-        locationAgreed: locationAgreed ?? existing?.[0]?.location_agreed ?? 0,
-        marketingAgreed: marketingAgreed ?? existing?.[0]?.marketing_agreed ?? 0,
+        termsAgreed: toBit(termsAgreed, existing?.[0]?.terms_agreed ?? 0),
+        privacyAgreed: toBit(privacyAgreed, existing?.[0]?.privacy_agreed ?? 0),
+        locationAgreed: toBit(locationAgreed, existing?.[0]?.location_agreed ?? 0),
+        marketingAgreed: toBit(marketingAgreed, existing?.[0]?.marketing_agreed ?? 0),
         provider: providerKey,
       })
     );
@@ -248,6 +253,10 @@ export const signupCustomer = async (req, res) => {
 
     const providerKey = provider.toLowerCase();
     const providerId = socialId || null; // 고정 식별자만 사용
+    const toBit = (val, fallback = 0) => {
+      if (val === undefined || val === null) return fallback;
+      return val ? 1 : 0;
+    };
     let customerId = userId || customerIdFromBody || null;
     let isNewUser = false;
 
@@ -271,10 +280,10 @@ export const signupCustomer = async (req, res) => {
             carrier || null,
             gender || null,
             profileImage || null,
-            termsAgreed ?? 0,
-            privacyAgreed ?? 0,
-            locationAgreed ?? 0,
-            marketingAgreed ?? 0,
+            toBit(termsAgreed),
+            toBit(privacyAgreed, 0),
+            toBit(locationAgreed, 0),
+            toBit(marketingAgreed, 0),
           ]
         );
       }
@@ -302,10 +311,10 @@ export const signupCustomer = async (req, res) => {
             carrier || null,
             gender || null,
             profileImage || null,
-            termsAgreed ?? 0,
-            privacyAgreed ?? 0,
-            locationAgreed ?? 0,
-            marketingAgreed ?? 0,
+            toBit(termsAgreed),
+            toBit(privacyAgreed, 0),
+            toBit(locationAgreed, 0),
+            toBit(marketingAgreed, 0),
           ]
         );
       }
@@ -338,10 +347,10 @@ export const signupCustomer = async (req, res) => {
         carrier || null,
         gender || null,
         profileImage || null,
-        termsAgreed ?? null,
-        privacyAgreed ?? null,
-        locationAgreed ?? null,
-        marketingAgreed ?? null,
+        toBit(termsAgreed),
+        toBit(privacyAgreed, 0),
+        toBit(locationAgreed, 0),
+        toBit(marketingAgreed, 0),
         customerId,
       ]
     );
@@ -392,10 +401,10 @@ export const signupCustomer = async (req, res) => {
         birthDate: birthDate || null,
         carrier: carrier || null,
         gender: gender || null,
-        termsAgreed: termsAgreed ?? 0,
-        privacyAgreed: privacyAgreed ?? 0,
-        locationAgreed: locationAgreed ?? 0,
-        marketingAgreed: marketingAgreed ?? 0,
+        termsAgreed: toBit(termsAgreed, 0),
+        privacyAgreed: toBit(privacyAgreed, 0),
+        locationAgreed: toBit(locationAgreed, 0),
+        marketingAgreed: toBit(marketingAgreed, 0),
         provider: providerKey,
       })
     );
