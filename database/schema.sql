@@ -600,6 +600,7 @@ CREATE TABLE IF NOT EXISTS customers (
   phone_number VARCHAR(20) COMMENT 'phone number',
   birth_date DATE NULL COMMENT 'birth date (YYMMDD -> date)',
   carrier VARCHAR(50) NULL COMMENT 'mobile carrier',
+  gender ENUM('M', 'F') NULL COMMENT 'gender',
   profile_image_url TEXT COMMENT 'profile image url',
   provider_type ENUM('kakao', 'naver', 'apple', 'local') NOT NULL COMMENT 'primary provider',
   provider_id VARCHAR(255) COMMENT 'provider user id',
