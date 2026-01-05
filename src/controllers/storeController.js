@@ -17,30 +17,35 @@ const syncStoragesFromSettings = async (storeId, storageSettings = {}) => {
       prefix: 'S',
       isEnabled: storageSettings?.isExtraSmallEnabled !== false,
       capacity: storageSettings?.extraSmall?.maxCapacity || 0,
+      hourlyRate: storageSettings?.extraSmall?.hourlyRate || 0,
     },
     {
       type: 'm',
       prefix: 'M',
       isEnabled: storageSettings?.isSmallEnabled !== false,
       capacity: storageSettings?.small?.maxCapacity || 0,
+      hourlyRate: storageSettings?.small?.hourlyRate || 0,
     },
     {
       type: 'l',
       prefix: 'L',
       isEnabled: storageSettings?.isMediumEnabled !== false,
       capacity: storageSettings?.medium?.maxCapacity || 0,
+      hourlyRate: storageSettings?.medium?.hourlyRate || 0,
     },
     {
       type: 'xl',
       prefix: 'XL',
       isEnabled: storageSettings?.isLargeEnabled !== false,
       capacity: storageSettings?.large?.maxCapacity || 0,
+      hourlyRate: storageSettings?.large?.hourlyRate || 0,
     },
     {
       type: 'special',
       prefix: 'SP',
       isEnabled: storageSettings?.isSpecialEnabled !== false,
       capacity: storageSettings?.special?.maxCapacity || 0,
+      hourlyRate: storageSettings?.special?.hourlyRate || 0,
     },
     {
       type: 'refrigeration',
@@ -50,6 +55,11 @@ const syncStoragesFromSettings = async (storeId, storageSettings = {}) => {
         storageSettings?.refrigeration?.maxCapacity ||
         storageSettings?.refrigerationMaxCapacity ||
         storageSettings?.refrigeration_max_capacity ||
+        0,
+      hourlyRate:
+        storageSettings?.refrigeration?.hourlyRate ||
+        storageSettings?.refrigerationHourlyFee ||
+        storageSettings?.refrigeration_hourly_rate ||
         0,
     },
   ];
@@ -69,7 +79,7 @@ const syncStoragesFromSettings = async (storeId, storageSettings = {}) => {
     for (let i = 1; i <= cfg.capacity; i += 1) {
       const number = `${cfg.prefix}${i}`;
       if (!taken.has(number)) {
-        inserts.push({ number, type: cfg.type });
+        inserts.push({ number, type: cfg.type, pricing: cfg.hourlyRate || 0 });
       }
     }
   }
@@ -78,7 +88,18 @@ const syncStoragesFromSettings = async (storeId, storageSettings = {}) => {
     const values = inserts.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())').join(', ');
     const params = [];
     inserts.forEach((item) => {
-      params.push(`stor_${uuidv4()}`, storeId, item.number, item.type, 'available', null, null, null, null, null);
+      params.push(
+        `stor_${uuidv4()}`,
+        storeId,
+        item.number,
+        item.type,
+        'available',
+        null,
+        null,
+        null,
+        item.pricing ?? 0,
+        null
+      );
     });
     await query(
       `INSERT INTO storages (id, store_id, number, type, status, width, height, depth, pricing, floor, created_at, updated_at)
