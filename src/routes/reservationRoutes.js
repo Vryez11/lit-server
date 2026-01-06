@@ -12,6 +12,7 @@ import {
   rejectReservation,
   cancelReservation,
   updateReservationStatus,
+  storeCheckin,
 } from '../controllers/reservationController.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -62,5 +63,11 @@ router.put('/:id/cancel', cancelReservation);
  * PUT /api/reservations/:id/status
  */
 router.put('/:id/status', updateReservationStatus);
+
+/**
+ * 매장 체크인 (사진 업로드 후 in_progress 전환)
+ * PUT /api/reservations/:id/checkin
+ */
+router.put('/:id/checkin', storeCheckin);
 
 export default router;
