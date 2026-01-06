@@ -1,0 +1,14 @@
+       WHERE id = ? AND customer_id = ?`,
+      [id, customerId]
+    );
+
+    if (reservation.storage_id) {
+      await query('UPDATE storages SET status = ? WHERE id = ?', ['available', reservation.storage_id]);
+    }
+
+    // ?ë™ ë°œê¸‰ ?? ?ˆì•½ ?„ë£Œ
+    try {
+      await issueCouponsForTrigger({
+        customerId,
+        storeId: reservation.store_id,
+        trigger: 'reservation_completed',

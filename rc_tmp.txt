@@ -1,5 +1,6 @@
+
 /**
- * Reservation controller (store + customer)
+ * Reservation controller
  */
 
 import { success, error } from '../utils/response.js';
@@ -7,18 +8,15 @@ import { query } from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
 import { issueCouponsForTrigger } from '../services/couponAutoIssue.js';
 
+const toMySQLDateTime = (dateString) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+};
+
 const ALLOWED_STATUSES = ['pending', 'pending_approval', 'confirmed', 'rejected', 'in_progress', 'completed', 'cancelled'];
 const ALLOWED_STORAGE_TYPES = ['s', 'm', 'l', 'xl', 'special', 'refrigeration'];
 
-const toMySQLDateTime = (dateString) => {
-  if (!dateString) return null;
-  const d = new Date(dateString);
-  return d.toISOString().slice(0, 19).replace('T', ' ');
-};
-
-/**
- * 예약 생성 (스토어/고객 공용)
- */
 export const createReservation = async (req, res) => {
   try {
     const storeId = req.storeId || req.body.storeId;
@@ -40,12 +38,17 @@ export const createReservation = async (req, res) => {
     } = req.body;
 
     if (!customerName || !phoneNumber || !startTime || !duration || !bagCount || !storeId || !storageType) {
+      return res.status(400).json(
+        error('VALIDATION_ERROR', '?�수 ?�보가 ?�락?�었?�니??, {
+          required: ['storeId', 'customerName', 'phoneNumber', 'startTime', 'duration', 'bagCount', 'storageType'],
+        })
+      );
+    }
+
+    if (!ALLOWED_STORAGE_TYPES.includes(storageType)) {
       return res
         .status(400)
-        .json(error('VALIDATION_ERROR', '필수 정보가 누락되었습니다', { required: ['storeId', 'customerName', 'phoneNumber', 'startTime', 'duration', 'bagCount', 'storageType'] }));
-    }
-    if (!ALLOWED_STORAGE_TYPES.includes(storageType)) {
-      return res.status(400).json(error('VALIDATION_ERROR', '유효하지 않은 보관함 타입입니다', { allowed: ALLOWED_STORAGE_TYPES }));
+        .json(error('VALIDATION_ERROR', '?�용?��? ?�는 보�????�?�입?�다', { allowed: ALLOWED_STORAGE_TYPES }));
     }
 
     const reservationId = `res_${uuidv4()}`;
@@ -55,6 +58,7 @@ export const createReservation = async (req, res) => {
       start.setHours(start.getHours() + Number(duration));
       calculatedEndTime = start.toISOString();
     }
+
     const customerId = req.customerId || req.body.customerId || `cust_${Date.now()}`;
 
     await query(
@@ -72,15 +76,15 @@ export const createReservation = async (req, res) => {
         customerName,
         phoneNumber,
         email || null,
-        null,
-        null,
+        null, // storage_id
+        null, // storage_number
         storageType,
         'pending',
         toMySQLDateTime(startTime),
         toMySQLDateTime(calculatedEndTime),
         toMySQLDateTime(requestTime || new Date().toISOString()),
-        null,
-        null,
+        null, // actual_start_time
+        null, // actual_end_time
         duration,
         bagCount,
         price || 0,
@@ -89,11 +93,11 @@ export const createReservation = async (req, res) => {
         luggageImageUrls ? JSON.stringify(luggageImageUrls) : null,
         'pending',
         paymentMethod,
-        null,
+        null, // qr_code
       ]
     );
 
-    const [row] = await query(
+    const [newReservation] = await query(
       `SELECT
          id, store_id as storeId, customer_id as customerId,
          customer_name as customerName, customer_phone as phoneNumber,
@@ -107,16 +111,13 @@ export const createReservation = async (req, res) => {
       [reservationId]
     );
 
-    return res.status(201).json(success(row, '예약이 생성되었습니다'));
+    return res.status(201).json(success(newReservation, '?�약???�성?�었?�니??));
   } catch (err) {
     console.error('[createReservation] error:', err);
-    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+    return res.status(500).json(error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', { message: err.message }));
   }
 };
 
-/**
- * 스토어 예약 목록
- */
 export const getReservations = async (req, res) => {
   try {
     const storeId = req.storeId;
@@ -169,13 +170,10 @@ export const getReservations = async (req, res) => {
     );
   } catch (err) {
     console.error('[getReservations] error:', err);
-    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+    return res.status(500).json(error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', { message: err.message }));
   }
 };
 
-/**
- * 스토어 예약 단건 조회
- */
 export const getReservation = async (req, res) => {
   try {
     const storeId = req.storeId;
@@ -195,18 +193,16 @@ export const getReservation = async (req, res) => {
       [id, storeId]
     );
     if (!rows || rows.length === 0) {
-      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다'));
     }
     return res.json(success(rows[0]));
   } catch (err) {
     console.error('[getReservation] error:', err);
-    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+    return res.status(500).json(error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', { message: err.message }));
   }
 };
 
-/**
- * 고객 예약 목록/단건 조회
- */
+// 고객?? 로그??고객???�약 목록 조회
 export const getCustomerReservations = async (req, res) => {
   try {
     const customerId = req.customerId;
@@ -260,10 +256,11 @@ export const getCustomerReservations = async (req, res) => {
     );
   } catch (err) {
     console.error('[getCustomerReservations] error:', err);
-    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+    return res.status(500).json(error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', { message: err.message }));
   }
 };
 
+// 고객?? 로그??고객???�약 ?�건 조회
 export const getCustomerReservation = async (req, res) => {
   try {
     const customerId = req.customerId;
@@ -284,30 +281,28 @@ export const getCustomerReservation = async (req, res) => {
       [id, customerId]
     );
     if (!rows || rows.length === 0) {
-      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다'));
     }
     return res.json(success(rows[0]));
   } catch (err) {
     console.error('[getCustomerReservation] error:', err);
-    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+    return res.status(500).json(error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', { message: err.message }));
   }
 };
 
-/**
- * 고객 체크아웃: completed 전환, 종료 시간 기록, 보관함 반납
- */
+// 고객 체크?�웃: ?�태�?completed�??�환, ?�제 종료 ?�간 기록, 보�???반납
 export const customerCheckout = async (req, res) => {
   try {
     const customerId = req.customerId;
     const { id } = req.params;
     const reservation = await findCustomerReservation(id, customerId);
     if (!reservation) {
-      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다'));
     }
     if (reservation.status !== 'in_progress' && reservation.status !== 'confirmed') {
       return res
         .status(400)
-        .json(error('INVALID_STATUS', '체크아웃 가능한 상태가 아닙니다', { currentStatus: reservation.status }));
+        .json(error('INVALID_STATUS', '체크?�웃 가?�한 ?�태가 ?�닙?�다', { currentStatus: reservation.status }));
     }
 
     await query(
@@ -321,16 +316,26 @@ export const customerCheckout = async (req, res) => {
       await query('UPDATE storages SET status = ? WHERE id = ?', ['available', reservation.storage_id]);
     }
 
-    return res.json(success({ id, status: 'completed' }, '체크아웃 완료'));
+    // ?�동 발급 ?? ?�약 ?�료
+    try {
+      await issueCouponsForTrigger({
+        customerId,
+        storeId: reservation.store_id,
+        trigger: 'reservation_completed',
+        reservationId: reservation.id,
+      });
+    } catch (hookErr) {
+      console.warn('[customerCheckout] auto issue skipped:', hookErr?.message);
+    }
+
+    return res.json(success({ id, status: 'completed' }, '체크?�웃 ?�료'));
   } catch (err) {
     console.error('[customerCheckout] error:', err);
-    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+    return res.status(500).json(error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', { message: err.message }));
   }
 };
 
-/**
- * 매장 체크인: in_progress 전환, 시작 시간/짐 사진 기록, 자동 발급(체크인 완료)
- */
+// 매장 체크?? ?�주가 ?�진 ?�로????in_progress�??�환
 export const storeCheckin = async (req, res) => {
   try {
     const storeId = req.storeId;
@@ -339,27 +344,27 @@ export const storeCheckin = async (req, res) => {
 
     const reservation = await findStoreReservation(id, storeId);
     if (!reservation) {
-      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '������ ã�� �� �����ϴ�'));
     }
     if (reservation.status !== 'confirmed' && reservation.status !== 'in_progress') {
       return res
         .status(400)
-        .json(error('INVALID_STATUS', '체크인 가능한 상태가 아닙니다', { currentStatus: reservation.status }));
+        .json(error('INVALID_STATUS', 'üũ�� ������ ���°� �ƴմϴ�', { currentStatus: reservation.status }));
     }
 
     const mergedPhotos = mergePhotoUrls(reservation.luggage_image_urls, photoUrls);
 
     await query(
-      `UPDATE reservations
+      UPDATE reservations
        SET status = 'in_progress',
            actual_start_time = COALESCE(actual_start_time, NOW()),
            luggage_image_urls = ?,
            updated_at = NOW()
-       WHERE id = ? AND store_id = ?`,
+       WHERE id = ? AND store_id = ?,
       [mergedPhotos.length ? JSON.stringify(mergedPhotos) : null, id, storeId]
     );
 
-    // 자동 발급 훅: 체크인 완료
+    // �ڵ� �߱� ��: üũ�� �Ϸ�(���� ��)
     try {
       await issueCouponsForTrigger({
         customerId: reservation.customer_id,
@@ -371,16 +376,13 @@ export const storeCheckin = async (req, res) => {
       console.warn('[storeCheckin] auto issue skipped:', hookErr?.message);
     }
 
-    return res.json(success({ id, status: 'in_progress', photos: mergedPhotos }, '체크인이 완료되었습니다'));
+    return res.json(success({ id, status: 'in_progress', photos: mergedPhotos }, 'üũ���� �Ϸ�Ǿ����ϴ�'));
   } catch (err) {
     console.error('[storeCheckin] error:', err);
-    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+    return res.status(500).json(error('INTERNAL_ERROR', '���� ������ �߻��߽��ϴ�', { message: err.message }));
   }
 };
-
-/**
- * 보관함 할당: 겹치는 예약이 없는 available 보관함을 선택
- */
+// 보�????�당: 겹치???�약???�는 available 보�??�을 ?�나 ?�택
 const assignAvailableStorage = async (storeId, startTime, endTime, storageType) => {
   const rows = await query(
     `SELECT s.id, s.number
@@ -418,7 +420,7 @@ const mergePhotoUrls = (existingJson, newUrls) => {
   }
 };
 
-// 매장용 헬퍼: 특정 예약 조회 (store 기준)
+// 매장???�퍼: ?�정 ?�약 조회 (store 기�?)
 const findStoreReservation = async (reservationId, storeId) => {
   const rows = await query(
     `SELECT id, store_id, customer_id, status, start_time, end_time, storage_id, storage_number, requested_storage_type, luggage_image_urls
@@ -428,7 +430,7 @@ const findStoreReservation = async (reservationId, storeId) => {
   return rows && rows.length > 0 ? rows[0] : null;
 };
 
-// 고객용 헬퍼: 특정 고객의 예약 조회
+// 고객???�퍼: ?�정 고객???�약 조회
 const findCustomerReservation = async (reservationId, customerId) => {
   const rows = await query(
     `SELECT id, store_id, customer_id, status, start_time, end_time, storage_id, storage_number, requested_storage_type
@@ -438,9 +440,6 @@ const findCustomerReservation = async (reservationId, customerId) => {
   return rows && rows.length > 0 ? rows[0] : null;
 };
 
-/**
- * 예약 승인 (보관함 자동 할당)
- */
 export const approveReservation = async (req, res) => {
   try {
     const storeId = req.storeId;
@@ -451,11 +450,14 @@ export const approveReservation = async (req, res) => {
       [id, storeId]
     );
     if (!rows || rows.length === 0) {
-      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다'));
     }
     const reservation = rows[0];
-    const { start_time: startTime, end_time: endTime, requested_storage_type: storageType } = reservation;
+    const startTime = reservation.start_time;
+    const endTime = reservation.end_time;
+    const storageType = reservation.requested_storage_type;
 
+    // ?��? ?�?�된 보�??�이 ?�으�??�로 ?�당
     let storageId = reservation.storage_id;
     let storageNumber = reservation.storage_number;
     if (!storageId) {
@@ -463,7 +465,7 @@ export const approveReservation = async (req, res) => {
       if (!available) {
         return res
           .status(409)
-          .json(error('NO_AVAILABLE_STORAGE', '해당 시간에 사용할 수 있는 보관함이 없습니다', { storeId, startTime, endTime }));
+          .json(error('NO_AVAILABLE_STORAGE', '?�당 ?�간???�용 가?�한 보�??�이 ?�습?�다', { storeId, startTime, endTime }));
       }
       storageId = available.id;
       storageNumber = available.number;
@@ -477,16 +479,15 @@ export const approveReservation = async (req, res) => {
       [storageId, storageNumber, id, storeId]
     );
 
-    return res.json(success({ id, status: 'confirmed', storageId, storageNumber }, '예약이 승인되었습니다'));
+    return res.json(
+      success({ id, status: 'confirmed', storageId, storageNumber }, '?�약???�인?�었�?보�??�이 배정?�었?�니??)
+    );
   } catch (err) {
     console.error('[approveReservation] error:', err);
-    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+    return res.status(500).json(error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', { message: err.message }));
   }
 };
 
-/**
- * 상태 변경 공통 처리
- */
 const updateStatus = async (req, res, newStatus, successMessage) => {
   const { id } = req.params;
   const storeId = req.storeId;
@@ -494,24 +495,25 @@ const updateStatus = async (req, res, newStatus, successMessage) => {
     if (!ALLOWED_STATUSES.includes(newStatus)) {
       return res
         .status(400)
-        .json(error('VALIDATION_ERROR', '허용되지 않는 상태입니다', { allowed: ALLOWED_STATUSES, received: newStatus }));
+        .json(error('VALIDATION_ERROR', '?�용?��? ?�는 ?�태?�니??, { allowed: ALLOWED_STATUSES, received: newStatus }));
     }
 
-    const rows = await query('SELECT id, store_id, storage_id FROM reservations WHERE id = ? AND store_id = ? LIMIT 1', [
-      id,
-      storeId,
-    ]);
+    const rows = await query(
+      'SELECT id, store_id, storage_id FROM reservations WHERE id = ? AND store_id = ? LIMIT 1',
+      [id, storeId]
+    );
     const reservation = rows && rows.length > 0 ? rows[0] : null;
     if (!reservation) {
-      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '?�약??찾을 ???�습?�다'));
     }
 
-    await query('UPDATE reservations SET status = ?, updated_at = NOW() WHERE id = ? AND store_id = ?', [
+    const result = await query('UPDATE reservations SET status = ?, updated_at = NOW() WHERE id = ? AND store_id = ?', [
       newStatus,
       id,
       storeId,
     ]);
 
+    // ?�료/반납/취소/거절 ??보�???반환
     const shouldRelease = ['cancelled', 'rejected', 'completed', 'returned'].includes(newStatus);
     if (shouldRelease && reservation?.storage_id) {
       await query('UPDATE storages SET status = ? WHERE id = ?', ['available', reservation.storage_id]);
@@ -520,21 +522,19 @@ const updateStatus = async (req, res, newStatus, successMessage) => {
     return res.json(success({ id, status: newStatus }, successMessage));
   } catch (err) {
     console.error(`[updateStatus:${newStatus}] error:`, err);
-    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+    return res.status(500).json(error('INTERNAL_ERROR', '?�버 ?�류가 발생?�습?�다', { message: err.message }));
   }
 };
 
-export const rejectReservation = (req, res) => updateStatus(req, res, 'rejected', '예약이 거절되었습니다');
-export const cancelReservation = (req, res) => updateStatus(req, res, 'cancelled', '예약이 취소되었습니다');
+export const rejectReservation = (req, res) => updateStatus(req, res, 'rejected', '?�약??거절?�었?�니??);
+export const cancelReservation = (req, res) => updateStatus(req, res, 'cancelled', '?�약??취소?�었?�니??);
 
-/**
- * 상태 변경 (일반 엔드포인트)
- */
 export const updateReservationStatus = (req, res) => {
   let newStatus = (req.body.status || '').trim();
   if (!newStatus) {
-    return res.status(400).json(error('VALIDATION_ERROR', '변경할 상태가 필요합니다', { required: ['status'] }));
+    return res.status(400).json(error('VALIDATION_ERROR', '변경할 ?�태가 ?�요?�니??, { required: ['status'] }));
   }
+  // ?�환 ?�태�?매핑 (?�키마에 ?�는 approved/active ?�을 ?�합 값으�?변??
   const normalize = {
     approved: 'confirmed',
     active: 'in_progress',
@@ -542,8 +542,12 @@ export const updateReservationStatus = (req, res) => {
   if (normalize[newStatus]) {
     newStatus = normalize[newStatus];
   }
-  if (newStatus === 'confirmed') {
+
+    // confirmed ?�청???�면 보�???배정까�? ?�행?�는 approveReservation 로직???�사??  if (newStatus === 'confirmed') {
     return approveReservation(req, res);
   }
-  return updateStatus(req, res, newStatus, '예약 상태가 변경되었습니다');
+
+  return updateStatus(req, res, newStatus, '?�약 ?�태가 변경되?�습?�다');
 };
+
+

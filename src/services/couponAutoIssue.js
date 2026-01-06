@@ -12,6 +12,8 @@ import { query } from '../config/database.js';
  */
 export const issueCouponsForTrigger = async ({ customerId, storeId = null, trigger, reservationId = null }) => {
   if (!customerId || !trigger) return [];
+  // 예약 완료 트리거는 현재 비활성화
+  if (trigger === 'reservation_completed') return [];
 
   const params = [trigger];
   let where = 'auto_issue_on = ? AND enabled = 1';
