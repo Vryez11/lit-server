@@ -89,6 +89,7 @@ import settlementRoutes from './routes/settlementRoutes.js';
 import customerStoreRoutes from './routes/customerStoreRoutes.js';
 import customerAuthRoutes from './routes/customerAuthRoutes.js';
 import customerReservationRoutes from './routes/customerReservationRoutes.js';
+import customerCouponRoutes from './routes/customerCouponRoutes.js';
 
 // 인증 라우트
 app.use('/api/auth', authRoutes);
@@ -135,6 +136,9 @@ app.use('/api/auth', customerAuthRoutes);
 
 // 고객용 예약
 app.use('/api/customer/reservations', customerReservationRoutes);
+
+// 고객용 쿠폰
+app.use('/api/customer/coupons', customerCouponRoutes);
 
 // ============================================================================
 // 404 에러 핸들러
