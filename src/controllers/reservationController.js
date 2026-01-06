@@ -185,10 +185,10 @@ export const getReservation = async (req, res) => {
          end_time as endTime, request_time as requestTime, duration,
          bag_count as bagCount, total_amount as price, message, storage_id as storageId, storage_number as storageNumber,
          requested_storage_type as storageType,
-         special_requests as specialRequests, payment_status as paymentStatus,
-         payment_method as paymentMethod, created_at as createdAt
-       FROM reservations
-       WHERE id = ? AND store_id = ? LIMIT 1`,
+        special_requests as specialRequests, payment_status as paymentStatus,
+        payment_method as paymentMethod, created_at as createdAt
+      FROM reservations
+      WHERE id = ? AND store_id = ? LIMIT 1`,
       [id, storeId]
     );
     if (!rows || rows.length === 0) {
@@ -197,6 +197,94 @@ export const getReservation = async (req, res) => {
     return res.json(success(rows[0]));
   } catch (err) {
     console.error('[getReservation] error:', err);
+    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+  }
+};
+
+// 고객용: 로그인 고객의 예약 목록 조회
+export const getCustomerReservations = async (req, res) => {
+  try {
+    const customerId = req.customerId;
+    const { status, date, storeId, page = 1, limit = 20 } = req.query;
+
+    const conditions = ['customer_id = ?'];
+    const params = [customerId];
+    if (storeId) {
+      conditions.push('store_id = ?');
+      params.push(storeId);
+    }
+    if (status) {
+      conditions.push('status = ?');
+      params.push(status);
+    }
+    if (date) {
+      conditions.push('DATE(start_time) = ?');
+      params.push(date);
+    }
+    const whereClause = conditions.join(' AND ');
+
+    const countResult = await query(`SELECT COUNT(*) as total FROM reservations WHERE ${whereClause}`, params);
+    const totalItems = countResult[0]?.total || 0;
+    const offset = (Number(page) - 1) * Number(limit);
+
+    const rows = await query(
+      `SELECT
+         id, store_id as storeId, customer_id as customerId,
+         customer_name as customerName, customer_phone as phoneNumber,
+         customer_email as email, status, start_time as startTime,
+         end_time as endTime, request_time as requestTime, duration,
+         bag_count as bagCount, total_amount as price, message,
+         storage_id as storageId, storage_number as storageNumber,
+         requested_storage_type as storageType,
+         special_requests as specialRequests, payment_status as paymentStatus,
+         payment_method as paymentMethod, created_at as createdAt
+       FROM reservations
+       WHERE ${whereClause}
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, Number(limit), offset]
+    );
+
+    return res.json(
+      success({
+        items: rows,
+        page: Number(page),
+        limit: Number(limit),
+        total: totalItems,
+      })
+    );
+  } catch (err) {
+    console.error('[getCustomerReservations] error:', err);
+    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+  }
+};
+
+// 고객용: 로그인 고객의 예약 단건 조회
+export const getCustomerReservation = async (req, res) => {
+  try {
+    const customerId = req.customerId;
+    const { id } = req.params;
+    const rows = await query(
+      `SELECT
+         id, store_id as storeId, customer_id as customerId,
+         customer_name as customerName, customer_phone as phoneNumber,
+         customer_email as email, status, start_time as startTime,
+         end_time as endTime, request_time as requestTime, duration,
+         bag_count as bagCount, total_amount as price, message,
+         storage_id as storageId, storage_number as storageNumber,
+         requested_storage_type as storageType,
+         special_requests as specialRequests, payment_status as paymentStatus,
+         payment_method as paymentMethod, created_at as createdAt
+       FROM reservations
+       WHERE id = ? AND customer_id = ? LIMIT 1`,
+      [id, customerId]
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+    }
+    return res.json(success(rows[0]));
+  } catch (err) {
+    console.error('[getCustomerReservation] error:', err);
     return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
   }
 };
