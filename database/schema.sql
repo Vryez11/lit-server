@@ -362,7 +362,7 @@ CREATE TABLE IF NOT EXISTS payments (
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
 
   -- 정산 관련
-  is_settled TINYINT(1) NOT NULL DEFAULT 0 COMMENT '정산에 포함되었는지 여부',
+  is_settled TINYINT NOT NULL DEFAULT 0 COMMENT '정산에 포함되었는지 여부',
 
   FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE,
   FOREIGN KEY (reservation_id) REFERENCES reservations(id) ON DELETE SET NULL,
@@ -571,7 +571,7 @@ CREATE TABLE IF NOT EXISTS store_settlement_accounts (
 
   account_holder_name VARCHAR(100) NOT NULL COMMENT '예금주명',
 
-  verified TINYINT(1) NOT NULL DEFAULT 0 COMMENT '계좌 인증 여부 (0:미인증, 1:인증됨)',
+  verified TINYINT NOT NULL DEFAULT 0 COMMENT '계좌 인증 여부 (0:미인증, 1:인증됨)',
   verified_at DATETIME NULL COMMENT '계좌 인증 완료 시간',
 
   -- 계좌 인증 결과
@@ -606,10 +606,10 @@ CREATE TABLE IF NOT EXISTS customers (
   provider_type ENUM('kakao', 'naver', 'apple', 'local') NOT NULL COMMENT 'primary provider',
   provider_id VARCHAR(255) COMMENT 'provider user id',
   UNIQUE KEY uniq_customer_provider (provider_type, provider_id),
-  terms_agreed TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'terms of service agreed',
-  privacy_agreed TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'privacy policy agreed',
-  location_agreed TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'location terms agreed',
-  marketing_agreed TINYINT(1) NOT NULL DEFAULT 0 COMMENT 'marketing consent',
+  terms_agreed TINYINT NOT NULL DEFAULT 0 COMMENT 'terms of service agreed',
+  privacy_agreed TINYINT NOT NULL DEFAULT 0 COMMENT 'privacy policy agreed',
+  location_agreed TINYINT NOT NULL DEFAULT 0 COMMENT 'location terms agreed',
+  marketing_agreed TINYINT NOT NULL DEFAULT 0 COMMENT 'marketing consent',
   last_login_at DATETIME COMMENT 'last login time',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'created at',
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'updated at',
