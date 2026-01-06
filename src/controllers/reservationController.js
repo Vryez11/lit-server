@@ -299,9 +299,17 @@ export const rejectReservation = (req, res) => updateStatus(req, res, 'rejected'
 export const cancelReservation = (req, res) => updateStatus(req, res, 'cancelled', '예약이 취소되었습니다');
 
 export const updateReservationStatus = (req, res) => {
-  const { status: newStatus } = req.body;
+  let newStatus = (req.body.status || '').trim();
   if (!newStatus) {
     return res.status(400).json(error('VALIDATION_ERROR', '변경할 상태가 필요합니다', { required: ['status'] }));
+  }
+  // 호환 상태값 매핑 (스키마에 없는 approved/active 등을 정합 값으로 변환)
+  const normalize = {
+    approved: 'confirmed',
+    active: 'in_progress',
+  };
+  if (normalize[newStatus]) {
+    newStatus = normalize[newStatus];
   }
   return updateStatus(req, res, newStatus, '예약 상태가 변경되었습니다');
 };
