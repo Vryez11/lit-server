@@ -13,6 +13,8 @@ const toMySQLDateTime = (dateString) => {
   return date.toISOString().slice(0, 19).replace('T', ' ');
 };
 
+const ALLOWED_STATUSES = ['pending', 'pending_approval', 'confirmed', 'rejected', 'in_progress', 'completed', 'cancelled'];
+
 export const createReservation = async (req, res) => {
   try {
     const storeId = req.storeId || req.body.storeId;
@@ -191,7 +193,7 @@ const assignAvailableStorage = async (storeId, startTime, endTime) => {
        AND NOT EXISTS (
          SELECT 1 FROM reservations r
          WHERE r.storage_id = s.id
-           AND r.status IN ('approved','active','in_progress')
+           AND r.status IN ('confirmed','in_progress')
            AND r.start_time < ?
            AND r.end_time > ?
        )
@@ -241,16 +243,13 @@ export const approveReservation = async (req, res) => {
 
     await query(
       `UPDATE reservations
-       SET status = 'approved', storage_id = ?, storage_number = ?, updated_at = NOW()
+       SET status = 'confirmed', storage_id = ?, storage_number = ?, updated_at = NOW()
        WHERE id = ? AND store_id = ?`,
       [storageId, storageNumber, id, storeId]
     );
 
     return res.json(
-      success(
-        { id, status: 'approved', storageId, storageNumber },
-        '예약이 승인되었고 보관함이 배정되었습니다'
-      )
+      success({ id, status: 'confirmed', storageId, storageNumber }, '예약이 승인되었고 보관함이 배정되었습니다')
     );
   } catch (err) {
     console.error('[approveReservation] error:', err);
@@ -262,6 +261,12 @@ const updateStatus = async (req, res, newStatus, successMessage) => {
   const { id } = req.params;
   const storeId = req.storeId;
   try {
+    if (!ALLOWED_STATUSES.includes(newStatus)) {
+      return res
+        .status(400)
+        .json(error('VALIDATION_ERROR', '허용되지 않는 상태입니다', { allowed: ALLOWED_STATUSES, received: newStatus }));
+    }
+
     const rows = await query(
       'SELECT id, store_id, storage_id FROM reservations WHERE id = ? AND store_id = ? LIMIT 1',
       [id, storeId]
