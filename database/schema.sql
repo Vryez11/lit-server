@@ -707,7 +707,7 @@ CREATE TABLE IF NOT EXISTS coupon_policies (
   benefit_value   VARCHAR(255) NULL COMMENT '혜택 값(예: 1개, 1000원 등)',
 
   -- 발급 트리거/조건
-  auto_issue_on   ENUM('manual_claim', 'signup', 'reservation_completed', 'checkin_completed')
+  auto_issue_on   ENUM('manual_claim', 'signup', 'checkin_completed')
                   NOT NULL DEFAULT 'manual_claim' COMMENT '발급 트리거',
   validity_days   INT NOT NULL DEFAULT 7 COMMENT '발급 후 유효일수',
   enabled         TINYINT NOT NULL DEFAULT 1 COMMENT '사용 여부',
