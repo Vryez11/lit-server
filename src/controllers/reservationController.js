@@ -64,10 +64,10 @@ export const createReservation = async (req, res) => {
       `INSERT INTO reservations (
          id, store_id, customer_id, customer_name, customer_phone, customer_email,
          storage_id, storage_number, requested_storage_type,
-         status, start_time, end_time, request_time, duration, bag_count,
-         total_amount, message, special_requests, luggage_image_urls,
-         payment_status, payment_method, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+         status, start_time, end_time, request_time, actual_start_time, actual_end_time,
+         duration, bag_count, total_amount, message, special_requests, luggage_image_urls,
+         payment_status, payment_method, qr_code, created_at, updated_at
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
         reservationId,
         storeId,
@@ -75,13 +75,15 @@ export const createReservation = async (req, res) => {
         customerName,
         phoneNumber,
         email || null,
-        null,
-        null,
+        null, // storage_id
+        null, // storage_number
         storageType,
         'pending',
         toMySQLDateTime(startTime),
         toMySQLDateTime(calculatedEndTime),
         toMySQLDateTime(requestTime || new Date().toISOString()),
+        null, // actual_start_time
+        null, // actual_end_time
         duration,
         bagCount,
         price || 0,
@@ -90,6 +92,7 @@ export const createReservation = async (req, res) => {
         luggageImageUrls ? JSON.stringify(luggageImageUrls) : null,
         'pending',
         paymentMethod,
+        null, // qr_code
       ]
     );
 
