@@ -311,5 +311,11 @@ export const updateReservationStatus = (req, res) => {
   if (normalize[newStatus]) {
     newStatus = normalize[newStatus];
   }
+
+    // confirmed 요청이 오면 보관함 배정까지 수행하는 approveReservation 로직을 재사용
+  if (newStatus === 'confirmed') {
+    return approveReservation(req, res);
+  }
+
   return updateStatus(req, res, newStatus, '예약 상태가 변경되었습니다');
 };
