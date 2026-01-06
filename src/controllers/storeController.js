@@ -10,7 +10,6 @@ import { v4 as uuidv4 } from 'uuid';
 // 보관함 설정과 storages 테이블 동기화
 // ========================================================================
 const syncStoragesFromSettings = async (storeId, storageSettings = {}) => {
-  // enabled/capacity는 UI에서 오는 payload 형태에 맞춰 안전하게 추출
   const typeConfigs = [
     {
       type: 's',
@@ -64,48 +63,84 @@ const syncStoragesFromSettings = async (storeId, storageSettings = {}) => {
     },
   ];
 
-  const existing = await query('SELECT type, number FROM storages WHERE store_id = ?', [storeId]);
+  const existing = await query('SELECT id, type, number FROM storages WHERE store_id = ?', [storeId]);
   const existingMap = {};
   for (const row of existing) {
-    if (!existingMap[row.type]) existingMap[row.type] = new Set();
-    existingMap[row.type].add(row.number);
+    if (!existingMap[row.type]) existingMap[row.type] = [];
+    existingMap[row.type].push(row);
   }
 
-  const inserts = [];
   for (const cfg of typeConfigs) {
-    if (!cfg.isEnabled || cfg.capacity <= 0) continue;
+    const list = existingMap[cfg.type] || [];
+    // 번호 기준 오름차순 정렬
+    list.sort((a, b) => {
+      const ai = parseInt(a.number.replace(cfg.prefix, ''), 10);
+      const bi = parseInt(b.number.replace(cfg.prefix, ''), 10);
+      return ai - bi;
+    });
 
-    const taken = existingMap[cfg.type] || new Set();
+    // 비활성 또는 0이면 해당 타입 전부 삭제
+    if (!cfg.isEnabled || cfg.capacity <= 0) {
+      if (list.length > 0) {
+        const ids = list.map((x) => x.id);
+        await query(`DELETE FROM storages WHERE store_id = ? AND id IN (${ids.map(() => '?').join(',')})`, [
+          storeId,
+          ...ids,
+        ]);
+      }
+      continue;
+    }
+
+    // 초과분 삭제 (capacity 초과 번호 제거)
+    if (list.length > cfg.capacity) {
+      const toDelete = list.slice(cfg.capacity).map((x) => x.id);
+      if (toDelete.length > 0) {
+        await query(`DELETE FROM storages WHERE store_id = ? AND id IN (${toDelete.map(() => '?').join(',')})`, [
+          storeId,
+          ...toDelete,
+        ]);
+      }
+    }
+
+    // 부족분 생성
+    const existingNumbers = new Set((existingMap[cfg.type] || []).map((x) => x.number));
+    const inserts = [];
     for (let i = 1; i <= cfg.capacity; i += 1) {
       const number = `${cfg.prefix}${i}`;
-      if (!taken.has(number)) {
+      if (!existingNumbers.has(number)) {
         inserts.push({ number, type: cfg.type, pricing: cfg.hourlyRate || 0 });
       }
     }
-  }
-
-  if (inserts.length > 0) {
-    const values = inserts.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())').join(', ');
-    const params = [];
-    inserts.forEach((item) => {
-      params.push(
-        `stor_${uuidv4()}`,
-        storeId,
-        item.number,
-        item.type,
-        'available',
-        null,
-        null,
-        null,
-        item.pricing ?? 0,
-        null
+    if (inserts.length > 0) {
+      const values = inserts.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())').join(', ');
+      const params = [];
+      inserts.forEach((item) => {
+        params.push(
+          `stor_${uuidv4()}`,
+          storeId,
+          item.number,
+          item.type,
+          'available',
+          null,
+          null,
+          null,
+          item.pricing ?? 0,
+          null
+        );
+      });
+      await query(
+        `INSERT INTO storages (id, store_id, number, type, status, width, height, depth, pricing, floor, created_at, updated_at)
+         VALUES ${values}`,
+        params
       );
-    });
-    await query(
-      `INSERT INTO storages (id, store_id, number, type, status, width, height, depth, pricing, floor, created_at, updated_at)
-       VALUES ${values}`,
-      params
-    );
+    }
+
+    // 기존 보관함 가격 최신화
+    await query('UPDATE storages SET pricing = ? WHERE store_id = ? AND type = ?', [
+      cfg.hourlyRate || 0,
+      storeId,
+      cfg.type,
+    ]);
   }
 };
 
