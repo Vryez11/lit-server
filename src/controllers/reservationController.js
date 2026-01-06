@@ -185,10 +185,10 @@ export const getReservation = async (req, res) => {
          end_time as endTime, request_time as requestTime, duration,
          bag_count as bagCount, total_amount as price, message, storage_id as storageId, storage_number as storageNumber,
          requested_storage_type as storageType,
-        special_requests as specialRequests, payment_status as paymentStatus,
-        payment_method as paymentMethod, created_at as createdAt
-      FROM reservations
-      WHERE id = ? AND store_id = ? LIMIT 1`,
+         special_requests as specialRequests, payment_status as paymentStatus,
+         payment_method as paymentMethod, created_at as createdAt
+       FROM reservations
+       WHERE id = ? AND store_id = ? LIMIT 1`,
       [id, storeId]
     );
     if (!rows || rows.length === 0) {
@@ -289,6 +289,68 @@ export const getCustomerReservation = async (req, res) => {
   }
 };
 
+// 고객 체크인: 상태를 in_progress로 전환, 실제 시작 시간 기록
+export const customerCheckin = async (req, res) => {
+  try {
+    const customerId = req.customerId;
+    const { id } = req.params;
+    const reservation = await findCustomerReservation(id, customerId);
+    if (!reservation) {
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+    }
+    if (reservation.status !== 'confirmed' && reservation.status !== 'in_progress') {
+      return res
+        .status(400)
+        .json(error('INVALID_STATUS', '체크인 가능한 상태가 아닙니다', { currentStatus: reservation.status }));
+    }
+
+    await query(
+      `UPDATE reservations
+       SET status = 'in_progress', actual_start_time = COALESCE(actual_start_time, NOW()), updated_at = NOW()
+       WHERE id = ? AND customer_id = ?`,
+      [id, customerId]
+    );
+
+    return res.json(success({ id, status: 'in_progress' }, '체크인 완료'));
+  } catch (err) {
+    console.error('[customerCheckin] error:', err);
+    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+  }
+};
+
+// 고객 체크아웃: 상태를 completed로 전환, 실제 종료 시간 기록, 보관함 반납
+export const customerCheckout = async (req, res) => {
+  try {
+    const customerId = req.customerId;
+    const { id } = req.params;
+    const reservation = await findCustomerReservation(id, customerId);
+    if (!reservation) {
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+    }
+    if (reservation.status !== 'in_progress' && reservation.status !== 'confirmed') {
+      return res
+        .status(400)
+        .json(error('INVALID_STATUS', '체크아웃 가능한 상태가 아닙니다', { currentStatus: reservation.status }));
+    }
+
+    await query(
+      `UPDATE reservations
+       SET status = 'completed', actual_end_time = NOW(), updated_at = NOW()
+       WHERE id = ? AND customer_id = ?`,
+      [id, customerId]
+    );
+
+    if (reservation.storage_id) {
+      await query('UPDATE storages SET status = ? WHERE id = ?', ['available', reservation.storage_id]);
+    }
+
+    return res.json(success({ id, status: 'completed' }, '체크아웃 완료'));
+  } catch (err) {
+    console.error('[customerCheckout] error:', err);
+    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+  }
+};
+
 // 보관함 할당: 겹치는 예약이 없는 available 보관함을 하나 선택
 const assignAvailableStorage = async (storeId, startTime, endTime, storageType) => {
   const rows = await query(
@@ -315,6 +377,16 @@ const releaseStorageIfAny = async (reservation) => {
   if (reservation?.storage_id) {
     await query('UPDATE storages SET status = ? WHERE id = ?', ['available', reservation.storage_id]);
   }
+};
+
+// 고객용 헬퍼: 특정 고객의 예약 조회
+const findCustomerReservation = async (reservationId, customerId) => {
+  const rows = await query(
+    `SELECT id, store_id, customer_id, status, start_time, end_time, storage_id, storage_number, requested_storage_type
+     FROM reservations WHERE id = ? AND customer_id = ? LIMIT 1`,
+    [reservationId, customerId]
+  );
+  return rows && rows.length > 0 ? rows[0] : null;
 };
 
 export const approveReservation = async (req, res) => {
