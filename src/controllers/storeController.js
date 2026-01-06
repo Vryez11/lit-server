@@ -821,6 +821,9 @@ export const updateStoreSettings = async (req, res) => {
     }
 
     // 4. 응답 - Flutter 형식으로 다시 조합
+    // 보관함 설정과 storages 동기화 (부족한 개수 자동 생성)
+    await syncStoragesFromSettings(storeId, storageSettings);
+
     return res.json(
       success(
         {
@@ -837,9 +840,6 @@ export const updateStoreSettings = async (req, res) => {
         '점포 설정 수정 성공'
       )
     );
-
-    // 보관함 설정과 storages 동기화 (부족한 개수 자동 생성)
-    await syncStoragesFromSettings(storeId, storageSettings);
   } catch (err) {
     console.error('점포 설정 수정 중 에러:', err);
     return res.status(500).json(
