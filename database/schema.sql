@@ -651,6 +651,44 @@ CREATE TABLE IF NOT EXISTS customer_refresh_tokens (
   FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='refresh tokens for customers';
 
+-- ============================================================================
+-- coupons - 고객 쿠폰
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS coupons (
+  id              VARCHAR(255) PRIMARY KEY COMMENT 'coupon id',
+  customer_id     VARCHAR(255) NOT NULL COMMENT '고객 ID',
+  store_id        VARCHAR(255) NULL COMMENT '매장 한정 쿠폰이면 지정',
+  type            ENUM('payment_discount', 'store_benefit') NOT NULL COMMENT '쿠폰 유형',
+  title           VARCHAR(255) NOT NULL COMMENT '쿠폰 제목',
+  description     TEXT NULL COMMENT '쿠폰 설명',
+
+  -- 할인형(또는 서비스형 금액/정률) 필드
+  discount_amount INT NULL COMMENT '정액 할인(원)',
+  discount_rate   TINYINT NULL COMMENT '정률 할인(%)',
+  min_spend       INT NULL COMMENT '최소 결제 금액 조건',
+  max_discount    INT NULL COMMENT '정률 시 최대 할인 한도',
+
+  -- 서비스형 설명 필드(선택)
+  benefit_item    VARCHAR(255) NULL COMMENT '혜택 품목(예: 사이다)',
+  benefit_value   VARCHAR(255) NULL COMMENT '혜택 값(예: 1개, 1000원 등)',
+
+  status          ENUM('active', 'used', 'expired') NOT NULL DEFAULT 'active' COMMENT '상태',
+  issued_at       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '발급 시각',
+  expires_at      DATETIME NOT NULL COMMENT '만료 시각',
+  used_at         DATETIME NULL COMMENT '사용 시각',
+
+  reservation_id  VARCHAR(255) NULL COMMENT '연관 예약 ID',
+  payment_id      BIGINT NULL COMMENT '연관 결제 ID',
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
+  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
+
+  INDEX idx_coupons_customer_status (customer_id, status),
+  INDEX idx_coupons_store_type (store_id, type),
+  INDEX idx_coupons_expires (expires_at),
+  INDEX idx_coupons_reservation (reservation_id),
+  INDEX idx_coupons_payment (payment_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='고객 쿠폰';
+
 ALTER TABLE payments
   ADD COLUMN settlement_statement_id BIGINT UNSIGNED NULL COMMENT '포함된 정산 ID',
   ADD INDEX idx_settle (is_settled, store_id, paid_at),
