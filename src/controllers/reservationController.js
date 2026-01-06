@@ -6,6 +6,7 @@
 import { success, error } from '../utils/response.js';
 import { query } from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
+import { issueCouponsForTrigger } from '../services/couponAutoIssue.js';
 
 const toMySQLDateTime = (dateString) => {
   if (!dateString) return null;
@@ -313,6 +314,18 @@ export const customerCheckout = async (req, res) => {
 
     if (reservation.storage_id) {
       await query('UPDATE storages SET status = ? WHERE id = ?', ['available', reservation.storage_id]);
+    }
+
+    // 자동 발급 훅: 예약 완료
+    try {
+      await issueCouponsForTrigger({
+        customerId,
+        storeId: reservation.store_id,
+        trigger: 'reservation_completed',
+        reservationId: reservation.id,
+      });
+    } catch (hookErr) {
+      console.warn('[customerCheckout] auto issue skipped:', hookErr?.message);
     }
 
     return res.json(success({ id, status: 'completed' }, '체크아웃 완료'));

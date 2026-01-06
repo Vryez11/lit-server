@@ -9,6 +9,7 @@ import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { query } from '../config/database.js';
 import { success, error } from '../utils/response.js';
+import { issueCouponsForTrigger } from '../services/couponAutoIssue.js';
 
 dotenv.config();
 
@@ -176,6 +177,13 @@ export const socialLogin = async (req, res) => {
          VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
         [customerId, providerKey, providerId, email || null, null]
       );
+
+      // 신규 가입 자동 발급 훅
+      try {
+        await issueCouponsForTrigger({ customerId, storeId: null, trigger: 'signup' });
+      } catch (hookErr) {
+        console.warn('[socialLogin] auto issue (signup) skipped:', hookErr?.message);
+      }
     }
 
     // 토큰 발급 및 refresh 저장
