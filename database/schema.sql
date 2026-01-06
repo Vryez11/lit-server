@@ -232,6 +232,7 @@ CREATE TABLE IF NOT EXISTS reservations (
 
   storage_id VARCHAR(255) COMMENT '보관함 ID',
   storage_number VARCHAR(50) COMMENT '보관함 번호',
+  requested_storage_type ENUM('s','m','l','xl','special','refrigeration') COMMENT '요청 보관함 타입',
 
   status ENUM('pending', 'pending_approval', 'confirmed', 'rejected', 'in_progress', 'completed', 'cancelled') DEFAULT 'pending' COMMENT '예약 상태',
 

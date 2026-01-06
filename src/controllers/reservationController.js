@@ -14,6 +14,7 @@ const toMySQLDateTime = (dateString) => {
 };
 
 const ALLOWED_STATUSES = ['pending', 'pending_approval', 'confirmed', 'rejected', 'in_progress', 'completed', 'cancelled'];
+const ALLOWED_STORAGE_TYPES = ['s', 'm', 'l', 'xl', 'special', 'refrigeration'];
 
 export const createReservation = async (req, res) => {
   try {
@@ -32,14 +33,21 @@ export const createReservation = async (req, res) => {
       luggageImageUrls,
       paymentMethod = 'card',
       requestTime,
+      storageType,
     } = req.body;
 
-    if (!customerName || !phoneNumber || !startTime || !duration || !bagCount || !storeId) {
+    if (!customerName || !phoneNumber || !startTime || !duration || !bagCount || !storeId || !storageType) {
       return res.status(400).json(
         error('VALIDATION_ERROR', '필수 정보가 누락되었습니다', {
-          required: ['storeId', 'customerName', 'phoneNumber', 'startTime', 'duration', 'bagCount'],
+          required: ['storeId', 'customerName', 'phoneNumber', 'startTime', 'duration', 'bagCount', 'storageType'],
         })
       );
+    }
+
+    if (!ALLOWED_STORAGE_TYPES.includes(storageType)) {
+      return res
+        .status(400)
+        .json(error('VALIDATION_ERROR', '허용되지 않는 보관함 타입입니다', { allowed: ALLOWED_STORAGE_TYPES }));
     }
 
     const reservationId = `res_${uuidv4()}`;
@@ -55,10 +63,11 @@ export const createReservation = async (req, res) => {
     await query(
       `INSERT INTO reservations (
          id, store_id, customer_id, customer_name, customer_phone, customer_email,
+         storage_id, storage_number, requested_storage_type,
          status, start_time, end_time, request_time, duration, bag_count,
          total_amount, message, special_requests, luggage_image_urls,
          payment_status, payment_method, created_at, updated_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
         reservationId,
         storeId,
@@ -66,6 +75,9 @@ export const createReservation = async (req, res) => {
         customerName,
         phoneNumber,
         email || null,
+        null,
+        null,
+        storageType,
         'pending',
         toMySQLDateTime(startTime),
         toMySQLDateTime(calculatedEndTime),
@@ -87,7 +99,8 @@ export const createReservation = async (req, res) => {
          customer_name as customerName, customer_phone as phoneNumber,
          customer_email as email, status, start_time as startTime,
          end_time as endTime, request_time as requestTime, duration,
-         bag_count as bagCount, total_amount as price, message,
+         bag_count as bagCount, total_amount as price, message, storage_id as storageId, storage_number as storageNumber,
+         requested_storage_type as storageType,
          special_requests as specialRequests, payment_status as paymentStatus,
          payment_method as paymentMethod, created_at as createdAt
        FROM reservations WHERE id = ?`,
@@ -132,7 +145,8 @@ export const getReservations = async (req, res) => {
          customer_name as customerName, customer_phone as phoneNumber,
          customer_email as email, status, start_time as startTime,
          end_time as endTime, request_time as requestTime, duration,
-         bag_count as bagCount, total_amount as price, message,
+         bag_count as bagCount, total_amount as price, message, storage_id as storageId, storage_number as storageNumber,
+         requested_storage_type as storageType,
          special_requests as specialRequests, payment_status as paymentStatus,
          payment_method as paymentMethod, created_at as createdAt
        FROM reservations
@@ -167,6 +181,7 @@ export const getReservation = async (req, res) => {
          customer_email as email, status, start_time as startTime,
          end_time as endTime, request_time as requestTime, duration,
          bag_count as bagCount, total_amount as price, message, storage_id as storageId, storage_number as storageNumber,
+         requested_storage_type as storageType,
          special_requests as specialRequests, payment_status as paymentStatus,
          payment_method as paymentMethod, created_at as createdAt
        FROM reservations
@@ -184,12 +199,13 @@ export const getReservation = async (req, res) => {
 };
 
 // 보관함 할당: 겹치는 예약이 없는 available 보관함을 하나 선택
-const assignAvailableStorage = async (storeId, startTime, endTime) => {
+const assignAvailableStorage = async (storeId, startTime, endTime, storageType) => {
   const rows = await query(
     `SELECT s.id, s.number
      FROM storages s
      WHERE s.store_id = ?
        AND s.status = 'available'
+       AND s.type = ?
        AND NOT EXISTS (
          SELECT 1 FROM reservations r
          WHERE r.storage_id = s.id
@@ -199,7 +215,7 @@ const assignAvailableStorage = async (storeId, startTime, endTime) => {
        )
      ORDER BY s.number
      LIMIT 1`,
-    [storeId, endTime, startTime]
+    [storeId, storageType, endTime, startTime]
   );
   return rows && rows.length > 0 ? rows[0] : null;
 };
@@ -215,7 +231,7 @@ export const approveReservation = async (req, res) => {
     const storeId = req.storeId;
     const { id } = req.params;
     const rows = await query(
-      `SELECT id, store_id, status, start_time, end_time, storage_id, storage_number
+      `SELECT id, store_id, status, start_time, end_time, storage_id, storage_number, requested_storage_type
        FROM reservations WHERE id = ? AND store_id = ? LIMIT 1`,
       [id, storeId]
     );
@@ -225,12 +241,13 @@ export const approveReservation = async (req, res) => {
     const reservation = rows[0];
     const startTime = reservation.start_time;
     const endTime = reservation.end_time;
+    const storageType = reservation.requested_storage_type;
 
     // 이미 저장된 보관함이 없으면 새로 할당
     let storageId = reservation.storage_id;
     let storageNumber = reservation.storage_number;
     if (!storageId) {
-      const available = await assignAvailableStorage(storeId, startTime, endTime);
+      const available = await assignAvailableStorage(storeId, startTime, endTime, storageType);
       if (!available) {
         return res
           .status(409)
