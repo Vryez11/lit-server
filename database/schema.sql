@@ -689,6 +689,36 @@ CREATE TABLE IF NOT EXISTS coupons (
   INDEX idx_coupons_payment (payment_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='고객 쿠폰';
 
+-- ============================================================================
+-- coupon_policies - 쿠폰 발급 정책 (매장/캠페인 설정)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS coupon_policies (
+  id              VARCHAR(255) PRIMARY KEY COMMENT '정책 ID',
+  store_id        VARCHAR(255) NULL COMMENT '매장 한정 정책이면 지정',
+  name            VARCHAR(255) NOT NULL COMMENT '정책명',
+  type            ENUM('payment_discount', 'store_benefit') NOT NULL COMMENT '쿠폰 유형',
+
+  -- 할인/혜택 정의
+  discount_amount INT NULL COMMENT '정액 할인(원)',
+  discount_rate   TINYINT NULL COMMENT '정률 할인(%)',
+  min_spend       INT NULL COMMENT '최소 결제 금액 조건',
+  max_discount    INT NULL COMMENT '정률 시 최대 할인 한도',
+  benefit_item    VARCHAR(255) NULL COMMENT '혜택 품목(예: 사이다)',
+  benefit_value   VARCHAR(255) NULL COMMENT '혜택 값(예: 1개, 1000원 등)',
+
+  -- 발급 트리거/조건
+  auto_issue_on   ENUM('manual_claim', 'signup', 'reservation_completed', 'checkin_completed')
+                  NOT NULL DEFAULT 'manual_claim' COMMENT '발급 트리거',
+  validity_days   INT NOT NULL DEFAULT 7 COMMENT '발급 후 유효일수',
+  enabled         TINYINT NOT NULL DEFAULT 1 COMMENT '사용 여부',
+
+  created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일시',
+  updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '수정일시',
+
+  INDEX idx_policy_store (store_id, enabled),
+  INDEX idx_policy_trigger (auto_issue_on, enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='쿠폰 발급 정책';
+
 ALTER TABLE payments
   ADD COLUMN settlement_statement_id BIGINT UNSIGNED NULL COMMENT '포함된 정산 ID',
   ADD INDEX idx_settle (is_settled, store_id, paid_at),
