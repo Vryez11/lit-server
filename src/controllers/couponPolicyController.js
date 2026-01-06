@@ -7,7 +7,7 @@ import { query } from '../config/database.js';
 import { success, error } from '../utils/response.js';
 
 const ALLOWED_TYPES = ['payment_discount', 'store_benefit'];
-const ALLOWED_TRIGGERS = ['manual_claim', 'signup', 'reservation_completed', 'checkin_completed'];
+const ALLOWED_TRIGGERS = ['manual_claim', 'signup', 'checkin_completed'];
 
 const mapPolicy = (row) => ({
   id: row.id,

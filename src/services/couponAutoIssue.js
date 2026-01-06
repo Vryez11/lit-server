@@ -6,13 +6,13 @@ import { query } from '../config/database.js';
  * @param {Object} params
  * @param {string} params.customerId - 발급 대상 고객 ID
  * @param {string|null} params.storeId - 매장 ID (없으면 NULL 정책만 조회)
- * @param {string} params.trigger - auto_issue_on 값 (signup|reservation_completed|checkin_completed|manual_claim)
+ * @param {string} params.trigger - auto_issue_on 값 (signup|checkin_completed|manual_claim)
  * @param {string|null} params.reservationId - 중복 발급 방지를 위한 예약 ID (선택)
  * @returns {Promise<Array<string>>} 생성된 쿠폰 ID 목록
  */
 export const issueCouponsForTrigger = async ({ customerId, storeId = null, trigger, reservationId = null }) => {
   if (!customerId || !trigger) return [];
-  // 예약 완료 트리거는 현재 비활성화
+  // 예약 완료 트리거는 사용하지 않음
   if (trigger === 'reservation_completed') return [];
 
   const params = [trigger];
