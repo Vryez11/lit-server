@@ -164,7 +164,7 @@ export const getReservation = async (req, res) => {
          customer_name as customerName, customer_phone as phoneNumber,
          customer_email as email, status, start_time as startTime,
          end_time as endTime, request_time as requestTime, duration,
-         bag_count as bagCount, total_amount as price, message,
+         bag_count as bagCount, total_amount as price, message, storage_id as storageId, storage_number as storageNumber,
          special_requests as specialRequests, payment_status as paymentStatus,
          payment_method as paymentMethod, created_at as createdAt
        FROM reservations
@@ -181,18 +181,108 @@ export const getReservation = async (req, res) => {
   }
 };
 
+// 보관함 할당: 겹치는 예약이 없는 available 보관함을 하나 선택
+const assignAvailableStorage = async (storeId, startTime, endTime) => {
+  const rows = await query(
+    `SELECT s.id, s.number
+     FROM storages s
+     WHERE s.store_id = ?
+       AND s.status = 'available'
+       AND NOT EXISTS (
+         SELECT 1 FROM reservations r
+         WHERE r.storage_id = s.id
+           AND r.status IN ('approved','active','in_progress')
+           AND r.start_time < ?
+           AND r.end_time > ?
+       )
+     ORDER BY s.number
+     LIMIT 1`,
+    [storeId, endTime, startTime]
+  );
+  return rows && rows.length > 0 ? rows[0] : null;
+};
+
+const releaseStorageIfAny = async (reservation) => {
+  if (reservation?.storage_id) {
+    await query('UPDATE storages SET status = ? WHERE id = ?', ['available', reservation.storage_id]);
+  }
+};
+
+export const approveReservation = async (req, res) => {
+  try {
+    const storeId = req.storeId;
+    const { id } = req.params;
+    const rows = await query(
+      `SELECT id, store_id, status, start_time, end_time, storage_id, storage_number
+       FROM reservations WHERE id = ? AND store_id = ? LIMIT 1`,
+      [id, storeId]
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+    }
+    const reservation = rows[0];
+    const startTime = reservation.start_time;
+    const endTime = reservation.end_time;
+
+    // 이미 저장된 보관함이 없으면 새로 할당
+    let storageId = reservation.storage_id;
+    let storageNumber = reservation.storage_number;
+    if (!storageId) {
+      const available = await assignAvailableStorage(storeId, startTime, endTime);
+      if (!available) {
+        return res
+          .status(409)
+          .json(error('NO_AVAILABLE_STORAGE', '해당 시간에 사용 가능한 보관함이 없습니다', { storeId, startTime, endTime }));
+      }
+      storageId = available.id;
+      storageNumber = available.number;
+      await query('UPDATE storages SET status = ?, updated_at = NOW() WHERE id = ?', ['occupied', storageId]);
+    }
+
+    await query(
+      `UPDATE reservations
+       SET status = 'approved', storage_id = ?, storage_number = ?, updated_at = NOW()
+       WHERE id = ? AND store_id = ?`,
+      [storageId, storageNumber, id, storeId]
+    );
+
+    return res.json(
+      success(
+        { id, status: 'approved', storageId, storageNumber },
+        '예약이 승인되었고 보관함이 배정되었습니다'
+      )
+    );
+  } catch (err) {
+    console.error('[approveReservation] error:', err);
+    return res.status(500).json(error('INTERNAL_ERROR', '서버 오류가 발생했습니다', { message: err.message }));
+  }
+};
+
 const updateStatus = async (req, res, newStatus, successMessage) => {
   const { id } = req.params;
   const storeId = req.storeId;
   try {
+    const rows = await query(
+      'SELECT id, store_id, storage_id FROM reservations WHERE id = ? AND store_id = ? LIMIT 1',
+      [id, storeId]
+    );
+    const reservation = rows && rows.length > 0 ? rows[0] : null;
+    if (!reservation) {
+      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+    }
+
     const result = await query('UPDATE reservations SET status = ?, updated_at = NOW() WHERE id = ? AND store_id = ?', [
       newStatus,
       id,
       storeId,
     ]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json(error('RESERVATION_NOT_FOUND', '예약을 찾을 수 없습니다'));
+
+    // 완료/반납/취소/거절 시 보관함 반환
+    const shouldRelease = ['cancelled', 'rejected', 'completed', 'returned'].includes(newStatus);
+    if (shouldRelease && reservation?.storage_id) {
+      await query('UPDATE storages SET status = ? WHERE id = ?', ['available', reservation.storage_id]);
     }
+
     return res.json(success({ id, status: newStatus }, successMessage));
   } catch (err) {
     console.error(`[updateStatus:${newStatus}] error:`, err);
@@ -200,7 +290,6 @@ const updateStatus = async (req, res, newStatus, successMessage) => {
   }
 };
 
-export const approveReservation = (req, res) => updateStatus(req, res, 'approved', '예약이 승인되었습니다');
 export const rejectReservation = (req, res) => updateStatus(req, res, 'rejected', '예약이 거절되었습니다');
 export const cancelReservation = (req, res) => updateStatus(req, res, 'cancelled', '예약이 취소되었습니다');
 
